@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f7f4ef">
+<title>S’CLINIC | CRM</title>
+<style>
+:root{--ink:#292723;--muted:#77736c;--line:#e8e3db;--paper:#fff;--bg:#f7f5f1;--accent:#9a8065;--accent2:#6f5944;--soft:#f0eae2;--red:#b85d55;--green:#63836c;--shadow:0 8px 28px #2927230b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,Arial,sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.shell{display:flex;min-height:100vh}.sidebar{width:235px;background:#302e2a;color:#fff;padding:25px 16px;display:flex;flex-direction:column;gap:26px;flex-shrink:0}
+.brand{padding:3px 12px}.brand strong{font-size:22px;letter-spacing:3px;font-weight:600}.brand small{display:block;color:#c9c2b8;letter-spacing:1.5px;font-size:9px;margin-top:5px}
+.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:#d6d0c7;text-align:left;padding:12px;border-radius:8px}.nav button.active,.nav button:hover{background:#ffffff18;color:white}.nav button span{display:inline-block;width:25px;color:#c6ad91}
+.sidefoot{margin-top:auto;color:#bcb5aa;font-size:11px;padding:12px}
+.main{flex:1;min-width:0}.topbar{height:72px;background:#ffffffd9;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+.topbar .eyebrow{color:var(--muted);font-size:12px}.user{display:flex;align-items:center;gap:10px}.avatar{width:34px;height:34px;border-radius:50%;background:var(--soft);display:grid;place-items:center;color:var(--accent2);font-weight:700}
+.content{padding:28px 30px;max-width:1500px;margin:auto}.pagehead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px}.pagehead h1{font-size:25px;font-weight:500;margin:0 0 5px}.pagehead p{margin:0;color:var(--muted)}
+.btn{border:1px solid var(--line);background:white;border-radius:8px;padding:10px 14px;color:var(--ink)}.btn.primary{background:var(--accent2);color:white;border-color:var(--accent2)}.btn:hover{filter:brightness(.97)}.btn.small{padding:7px 10px;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}.stat,.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}.stat{padding:18px}.stat label{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:27px;font-weight:500;margin:8px 0 2px}.stat small{color:var(--muted)}
+.panel{padding:18px;margin-bottom:18px}.panelhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px}.panelhead h2{font-size:16px;font-weight:600;margin:0}.filters{display:flex;gap:8px;flex-wrap:wrap}.field{border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:white;color:var(--ink);min-width:0}.field.search{min-width:220px}
+.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;white-space:nowrap}.notes-cell{white-space:normal;min-width:190px;max-width:300px;line-height:1.35;overflow-wrap:anywhere;color:#5f5a52}th{text-align:left;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:11px 10px;border-bottom:1px solid var(--line)}td{padding:13px 10px;border-bottom:1px solid #f0ede8;font-size:13px}tr:last-child td{border-bottom:0}.person{font-weight:600}.sub{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.pill{display:inline-block;padding:4px 8px;border-radius:30px;background:#f0eee9;color:#625d55;font-size:11px}.pill.Interested{background:#f7efe0;color:#92713e}.pill.Booked{background:#eaf0f5;color:#54718b}.pill.Attended,.pill.Converted{background:#eaf2eb;color:#56775d}.pill.No-response{background:#f5e9e7;color:#a45f58}.pill.Lost{background:#eee;color:#777}
+.empty{text-align:center;padding:35px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.quicklist{display:grid;gap:12px}.quickrow{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #f0ede8;padding-bottom:10px}.quickrow:last-child{border:0;padding:0}
+.modalback{display:none;position:fixed;inset:0;background:#17151288;z-index:20;align-items:center;justify-content:center;padding:16px}.modalback.show{display:flex}.modal{background:white;border-radius:14px;width:min(620px,100%);max-height:90vh;overflow:auto;padding:22px;box-shadow:0 20px 70px #0003}.modal h2{font-size:19px;margin:0 0 18px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.formitem{display:grid;gap:5px}.formitem.full{grid-column:1/-1}.formitem label{font-size:12px;color:var(--muted)}.filters .formitem{min-width:170px}.formitem input,.formitem select,.formitem textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff}.formitem textarea{min-height:75px;resize:vertical}.modalactions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.notice{background:#f5f0e9;border:1px solid #e9dfd2;padding:13px 15px;border-radius:9px;color:#655747;font-size:12px;margin-top:12px}
+.reportgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.reportbox{background:#faf9f7;border-radius:9px;padding:14px}.reportbox strong{font-size:22px;display:block;margin-top:5px}
+.mobilemenu{display:none}
+/* Lead register organization */
+.panelhead{flex-wrap:wrap}.filters{align-items:center}.filters select{max-width:210px}
+.tablewrap{border:1px solid var(--line);border-radius:9px}.tablewrap thead th{position:sticky;top:0;background:#faf8f5;z-index:1}
+.tablewrap tbody tr:hover td{background:#faf8f4}.tablewrap td:nth-child(2){font-weight:600;font-variant-numeric:tabular-nums}
+.register-help{color:var(--muted);font-size:12px;margin:0 0 13px}.register-count{color:var(--accent2);font-size:12px;font-weight:600}
+@media(max-width:850px){.filters select{max-width:none}}
+@media(max-width:850px){.sidebar{width:68px;padding:20px 8px}.brand{padding:5px 7px}.brand strong{font-size:0}.brand strong:after{content:"S";font-size:22px}.brand small,.nav .navlabel,.sidefoot{display:none}.nav button{text-align:center;padding:12px 5px}.nav button span{width:auto}.stats{grid-template-columns:repeat(2,1fr)}.content{padding:22px 16px}.topbar{padding:0 16px}.grid2{grid-template-columns:1fr}}
+@media(max-width:520px){.sidebar{display:none}.topbar{height:60px}.content{padding:18px 12px}.pagehead{align-items:center}.pagehead h1{font-size:21px}.stats{gap:8px}.stat{padding:13px}.stat strong{font-size:23px}.stat label{font-size:11px}.formgrid{grid-template-columns:1fr}.formitem.full{grid-column:auto}.reportgrid{grid-template-columns:1fr 1fr}.filters{width:100%}.filters .field{flex:1}.field.search{min-width:100%}}
+.wr h1{font-size:22px;font-weight:700;margin:0 0 6px}.wr h3{font-size:15px;margin:22px 0 8px}.wmeta{color:#555;margin:0 0 4px}.wnote{font-size:11px;color:#666;margin:8px 0 0}
+.wr table{white-space:normal}.wr th{background:#4d4d4f;color:#fff;text-transform:none;letter-spacing:0;font-size:11px;font-weight:600;text-align:center;padding:9px 6px;border-bottom:0}
+.wr td{text-align:center;font-weight:600;padding:10px 6px}.wr td:first-child,.wr th:first-child{text-align:left}.wr tbody tr:nth-child(even) td{background:#f1f1f1}.wr tr.yel td{background:#fbf6d5!important}.wr tr.tot td{background:#e6e6e6!important;font-weight:700}
+.wl{display:block;font-weight:600;margin:12px 0 5px}.wt{width:100%;min-height:62px;border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit}
+@media print{.sidebar,.topbar,.pagehead,.noprint,.mobilemenu{display:none!important}.shell,.main{display:block}.content{padding:0;max-width:none}body{background:#fff}.panel{box-shadow:none;border:0;padding:0}.wt{border:0;border-bottom:1px solid #bbb;border-radius:0;resize:none}.wr th,.wr tr.yel td,.wr tr.tot td,.wr tbody tr:nth-child(even) td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+.stat.stat-link{cursor:pointer;transition:box-shadow .15s,transform .15s;border-color:#d7c8b8}.stat.stat-link:hover,.stat.stat-link:focus-visible{box-shadow:0 9px 24px #29272322;transform:translateY(-2px);outline:2px solid #9a8065;outline-offset:2px}.stat-link small:after{content:"  →";font-weight:700}.followup-stats .stat[role="button"]{cursor:pointer;transition:border-color .15s,background .15s}.followup-stats .stat[role="button"]:hover,.followup-stats .stat.selected{border-color:var(--accent);background:#faf6f0}.followup-stats .stat[role="button"]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.followup-filter-note{margin:0 0 14px;color:var(--muted);font-size:12px}
+.pill.Called{background:#e9edf8;color:#4c628c}.pill.Called-No-Answer{background:#f7e9e5;color:#9c5b4d}
+.pill.Follow-up-Required{background:#f5edda;color:#85662f}.dashboard-date-panel .formitem{min-width:190px}.followup-stats{margin-top:0;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.lead-date-filter{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}.lead-date-filter input{max-width:160px}@media(max-width:520px){.lead-date-filter{flex:1}.lead-date-filter input{width:100%;min-width:0}}
+ .savewarning{background:#fff2d9;border-bottom:1px solid #e7d3a7;padding:10px 30px;font-size:12px;color:#6a4c22}
+#saveBar{background:#f0eae2;border-bottom:1px solid #dfd2c3;padding:10px 30px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px}#saveBar .btn{padding:7px 11px}#saveStatus{font-weight:600;color:#6f5944}#saveStatus.error{color:#b85d55}
+</style>
+</head>
+<body>
+<div class="shell" id="crmShell" style="display:none">
+<aside class="sidebar">
+ <div class="brand"><strong>S’CLINIC</strong><small>HAIR HEALTH & REGENERATION</small></div>
+ <nav class="nav">
+  <button class="active" data-page="dashboard"><span>⌂</span><span class="navlabel">Dashboard</span></button>
+  <button data-page="leads"><span>◎</span><span class="navlabel">All Leads</span></button>
+  <button data-page="followups"><span>◷</span><span class="navlabel">Follow-ups</span></button>
+  <button data-page="consultations"><span>▣</span><span class="navlabel">Consultations</span></button>
+  <button data-page="reports"><span>▤</span><span class="navlabel">Reports</span></button>
+  <button data-page="settings"><span>⚙</span><span class="navlabel">Settings</span></button>
+ </nav>
+ <div class="sidefoot">Private shared CRM workspace<br>Secure cloud edition</div>
+</aside>
+<main class="main">
+ <header class="topbar"><div><div class="eyebrow">S’CLINIC / CLIENT MANAGEMENT</div><strong id="topTitle">Dashboard</strong></div><div class="user"><div class="avatar">S</div><div><strong style="font-size:12px">S’CLINIC Team</strong><span class="sub" id="accountLabel"></span><button class="btn small" onclick="logoutCRM()" type="button">Sign out</button></div></div></header>
+ <div id="saveBar"><span id="saveStatus" role="status" aria-live="polite">Connecting to cloud…</span><button class="btn" type="button" onclick="loadCloud()">Refresh leads</button><button class="btn" type="button" onclick="backupJSON()">Download backup</button></div>
+  <section class="content" id="app"></section>
+</main>
+</div>
+<div class="modalback" id="leadModal"><div class="modal">
+ <h2 id="modalTitle">Add new lead</h2>
+ <form id="leadForm"><input type="hidden" id="editId">
+ <div class="formgrid">
+  <div class="formitem"><label>First name *</label><input id="firstName" required></div>
+  <div class="formitem"><label>Last name</label><input id="lastName"></div>
+  <div class="formitem"><label>WhatsApp / phone *</label><input id="phone" required placeholder="+971 5X XXX XXXX"></div>
+  <div class="formitem"><label>Lead date *</label><input id="leadDateInput" type="date" required></div>
+  <div class="formitem"><label>Lead source</label><select id="source"><option>Instagram</option><option>Facebook</option><option>NA</option><option>LinkedIn</option></select></div>
+  <div class="formitem"><label>Status</label><select id="status"><option>New</option><option>Called</option><option>Called No Answer</option><option>Interested</option><option>Follow-up Required</option><option>No response</option><option>Booked</option><option>Attended</option><option>No-show</option><option>Converted</option><option>Lost</option></select></div>
+  <div class="formitem"><label>Next follow-up</label><input id="followDate" type="date"></div>
+  <div class="formitem"><label>Consultation date</label><input id="consultDate" type="date"></div>
+  <div class="formitem"><label>Package value (AED)</label><input id="value" type="number" min="0" step="0.01" placeholder="0"></div>
+  <div class="formitem full"><label>Notes</label><textarea id="notes" placeholder="Enquiry details, preferences, follow-up notes..."></textarea></div>
+ </div><div class="modalactions"><button type="button" class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" type="submit">Save lead</button></div>
+ </form>
+ </div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<div id="loginOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f7f5f1;z-index:100;padding:20px"><form onsubmit="loginCRM(event)" style="background:white;border:1px solid #e8e3db;border-radius:14px;padding:30px;width:min(420px,100%);box-shadow:0 8px 28px #2927230b"><h2 style="letter-spacing:2px">S’CLINIC</h2><p style="color:#77736c">Secure team CRM sign-in · recovery v3</p><label>Email<input id="loginEmail" type="email" required autocomplete="username" class="field" style="display:block;width:100%;margin:7px 0 15px"></label><label>Password<input id="loginPassword" type="password" required autocomplete="current-password" class="field" style="display:block;width:100%;margin:7px 0 15px"></label><button class="btn primary" id="loginSubmit" type="submit" style="width:100%">Sign in</button><button class="btn" type="button" onclick="resetCRMPassword()" style="width:100%;margin-top:10px">Set / reset password</button><p id="loginMessage" role="status" style="color:#b85d55;font-size:12px"></p></form></div>
+<script>
+const SUPABASE_URL='https://nidzaresttneurunhjjk.supabase.co';
+const SUPABASE_KEY='sb_publishable_4eN38x0JgvkbeYXlVssXbQ_xgHuHcCM';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const recoveryParams = new URLSearchParams(window.location.hash.replace(/^#/,''));
+const queryParams = new URLSearchParams(window.location.search);
+let passwordRecoveryMode = recoveryParams.get('type') === 'recovery' || queryParams.get('type') === 'recovery';
+let recoveryEventSeen = false;
+
+function showPasswordRecovery(){
+ passwordRecoveryMode=true;
+ document.getElementById('loginOverlay').style.display='flex';
+ document.getElementById('crmShell').style.display='none';
+ const form=document.querySelector('#loginOverlay form');
+ form.onsubmit=saveNewCRMPassword;
+ form.querySelector('h2').textContent='Create your new password';
+ form.querySelector('p').textContent='Enter a new password to activate your S’CLINIC CRM account.';
+ document.getElementById('loginEmail').closest('label').style.display='none';
+ const field=document.getElementById('loginPassword');
+ field.value='';field.required=true;field.autocomplete='new-password';field.minLength=8;
+ field.closest('label').firstChild.textContent='New password';
+ document.getElementById('loginSubmit').textContent='Save new password';
+ const resetButton=form.querySelector('button[onclick="resetCRMPassword()"]');
+ if(resetButton)resetButton.style.display='none';
+ document.getElementById('loginMessage').textContent='Use at least 8 characters.';
+}
+async function saveNewCRMPassword(event){
+ event.preventDefault();
+ const password=document.getElementById('loginPassword').value;
+ if(password.length<8){document.getElementById('loginMessage').textContent='Use at least 8 characters.';return}
+ const button=document.getElementById('loginSubmit');button.disabled=true;
+ const {error}=await sb.auth.updateUser({password});button.disabled=false;
+ if(error){document.getElementById('loginMessage').textContent=error.message;return}
+ passwordRecoveryMode=false;
+ history.replaceState({},'',window.location.origin+window.location.pathname);
+ document.getElementById('loginMessage').textContent='Password saved. Loading your CRM…';
+ await setupCloud();
+}
+sb.auth.onAuthStateChange((event)=>{
+ if(event==='PASSWORD_RECOVERY'){
+  recoveryEventSeen=true;
+  showPasswordRecovery();
+}
+if(event==='SIGNED_IN' && passwordRecoveryMode)showPasswordRecovery();
+});
+let leads=[], activeUser=null, cloudReady=false, savePending=false, cloudChannel=null;
+const statusEl=()=>document.getElementById('saveStatus');
+function saveIndicator(message,error=false){const el=statusEl();if(el){el.textContent=message;el.classList.toggle('error',error)}}
+function validBackup(value){return Array.isArray(value)&&value.every(x=>x&&typeof x==='object'&&typeof x.id==='string'&&typeof x.firstName==='string')}
+function save(){return cloudReady;}
+async function loadCloud(){
+ if(!activeUser)return;
+ saveIndicator('Loading leads from secure cloud…');
+ const rows=[];
+ for(let offset=0;;offset+=500){
+  const {data,error}=await sb.from('leads').select('id,payload').order('id').range(offset,offset+499);
+  if(error){saveIndicator('Could not load leads: '+error.message,true);return}
+  rows.push(...data);if(data.length<500)break;
+ }
+ leads=rows.map(x=>x.payload);cloudReady=true;
+ leads=leads.map(x=>({...x,source:normalizeSource(x)}));
+ saveIndicator('Cloud connected • '+leads.length+' leads');render();
+}
+async function saveCloudLead(lead){
+ if(!activeUser||!cloudReady)throw Error('Please sign in and load the CRM first');
+ saveIndicator('Saving to shared cloud…');
+ const {error}=await sb.from('leads').upsert({id:lead.id,payload:lead,updated_by:activeUser.id},{onConflict:'id'});
+ if(error){saveIndicator('NOT SAVED: '+error.message,true);throw error}
+ saveIndicator('Saved to shared cloud ✓');
+}
+async function setupCloud(){
+ // Allow the Supabase client to finish consuming the recovery URL first.
+ const {data:{session}}=await sb.auth.getSession();
+ if(passwordRecoveryMode){
+  if(session){showPasswordRecovery();return}
+  // A missing recovery session means the one-time link was not accepted.
+  showLogin('Recovery link could not be verified. Request a new link only after the email limit resets.');
+  return;
+ }
+ const {data:{user},error}=await sb.auth.getUser();
+ if(error||!user){showLogin();return}
+ const {data:membership,error:memberError}=await sb.from('team_members').select('role').eq('user_id',user.id).maybeSingle();
+ if(memberError||!membership){await sb.auth.signOut();showLogin('This email is not authorized for the S’CLINIC CRM.');return}
+ activeUser=user;
+ document.getElementById('loginOverlay').style.display='none';
+ document.getElementById('crmShell').style.display='flex';
+ document.getElementById('accountLabel').textContent=user.email+' ('+membership.role+')';
+ await loadCloud();
+ if(cloudChannel)await sb.removeChannel(cloudChannel);
+ cloudChannel=sb.channel('crm-leads-sync').on('postgres_changes',{event:'*',schema:'public',table:'leads'},()=>{if(!savePending)loadCloud()}).subscribe();
+ // Fallback refresh covers projects without Realtime publication enabled.
+ window.addEventListener('focus',()=>{if(activeUser&&!savePending)loadCloud()});
+}
+function showLogin(message=''){
+ activeUser=null;cloudReady=false;leads=[];
+ document.getElementById('crmShell').style.display='none';
+ document.getElementById('loginOverlay').style.display='flex';
+ document.getElementById('loginMessage').textContent=message;
+}
+async function loginCRM(e){
+ e.preventDefault();const btn=document.getElementById('loginSubmit');btn.disabled=true;
+ document.getElementById('loginMessage').textContent='Signing in…';
+ const email=document.getElementById('loginEmail').value.trim();
+ const password=document.getElementById('loginPassword').value;
+ const {error}=await sb.auth.signInWithPassword({email,password});
+ btn.disabled=false;
+ if(error){document.getElementById('loginMessage').textContent=error.message;return}
+ document.getElementById('loginPassword').value='';await setupCloud();
+}
+async function logoutCRM(){if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;await sb.auth.signOut();showLogin('Signed out.');}
+async function resetCRMPassword(){const email=document.getElementById('loginEmail').value.trim();if(!email){document.getElementById('loginMessage').textContent='Enter your email first.';return}const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});document.getElementById('loginMessage').textContent=error?error.message:'If this account exists, a password reset email has been sent.'}
+let page='dashboard';
+const app=document.getElementById('app');
+const money=n=>'AED '+Number(n||0).toLocaleString('en-AE',{maximumFractionDigits:2});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lead Source']||'').trim().toLowerCase();const campaign=String(x.trackerData?.Campaign||'').toLowerCase();if(original==='linkedin'||campaign==='linkedin')return 'LinkedIn';if(original==='instagram'||campaign.includes('instagram'))return 'Instagram';if(original==='facebook'||campaign.includes('facebook'))return 'Facebook';return 'NA';}
+leads=leads.map(x=>({...x,source:normalizeSource(x)}));
+const getDue=()=>leads.filter(x=>x.followDate&&x.followDate<=today()&&!['Converted','Lost'].includes(x.status));
+function stats(){return {total:leads.length,new:leads.filter(x=>x.status==='New').length,booked:leads.filter(x=>x.status==='Booked').length,converted:leads.filter(x=>x.status==='Converted').length,revenue:leads.filter(x=>x.status==='Converted').reduce((s,x)=>s+Number(x.value||0),0)}}
+function setPage(p){page=p;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
+function pageHead(title,desc,action=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div>${action}</div>`}
+function render(){
+ document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',followups:'Follow-ups',consultations:'Consultations',reports:'Reports',settings:'Settings'})[page];
+ if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='followups')renderFollowups();if(page==='consultations')renderConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
+}
+// Dashboard date range uses the date each lead was received, inclusive of both endpoints.
+let dashboardRange={from:'',to:''};
+function dashboardFilteredLeads(){
+ const from=dashboardRange.from?dateSortValue(dashboardRange.from):0;
+ const to=dashboardRange.to?dateSortValue(dashboardRange.to):0;
+ return leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!from||(d&&d>=from))&&(!to||(d&&d<=to));});
+}
+function applyDashboardDates(){
+ const from=document.getElementById('dashboardFrom').value,to=document.getElementById('dashboardTo').value;
+ if(from&&to&&from>to){alert('From date cannot be later than To date.');return;}
+ dashboardRange={from,to};renderDashboard();
+}
+function clearDashboardDates(){dashboardRange={from:'',to:''};renderDashboard()}
+// Follow-up work queue: only active outreach statuses; terminal statuses never appear.
+const FOLLOWUP_ACTIVE_STATUSES=['Interested','Follow-up Required','Attended','No-show','Called','Called No Answer','No response'];
+function followupPriority(x){
+ const st=x.status;
+ if(st==='Interested'||st==='Follow-up Required')return 0;
+ if(st==='Attended'||st==='No-show')return 1;
+ if(st==='Called'||st==='Called No Answer'||st==='No response')return 2;
+ return 3;
+}
+function followupCandidates(items=leads){
+ return items.filter(x=>FOLLOWUP_ACTIVE_STATUSES.includes(x.status))
+ .sort((a,b)=>followupPriority(a)-followupPriority(b)||
+ (a.followDate?dateSortValue(a.followDate):Number.MAX_SAFE_INTEGER)-(b.followDate?dateSortValue(b.followDate):Number.MAX_SAFE_INTEGER)||
+ dateSortValue(leadDate(b))-dateSortValue(leadDate(a)));
+}
+// Dashboard metric shortcuts carry the dashboard received-date range into All Leads.
+function openDashboardMetric(kind){
+ const status=kind==='new'?'New':kind==='booked'?'Booked':kind==='lost'?'Lost':'';
+ setPage('leads');
+ document.getElementById('leadFrom').value=dashboardRange.from;
+ document.getElementById('leadTo').value=dashboardRange.to;
+ document.getElementById('statusFilter').value=status;
+ filterLeads();
+ document.getElementById('leadTable')?.scrollIntoView({block:'nearest'});
+}
+function renderDashboard(){
+ const list=dashboardFilteredLeads();
+ const s={total:list.length,new:list.filter(x=>x.status==='New').length,booked:list.filter(x=>x.status==='Booked').length,converted:list.filter(x=>x.status==='Converted').length,lost:list.filter(x=>x.status==='Lost').length,revenue:list.filter(x=>x.status==='Converted').reduce((n,x)=>n+Number(x.value||0),0)};
+ const due=followupCandidates(list).filter(x=>x.followDate&&dateSortValue(x.followDate)<=dateSortValue(today()));
+ app.innerHTML=pageHead('Good day','Overview by lead received date. Select a date range to filter every dashboard section.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`
+ <div class="panel dashboard-date-panel"><div class="panelhead"><h2>Dashboard date filter</h2><span class="register-count">${list.length} of ${leads.length} leads</span></div>
+ <div class="filters"><label class="formitem">From date (lead received)<input class="field" type="date" id="dashboardFrom" value="${dashboardRange.from}" onchange="applyDashboardDates()"></label>
+ <label class="formitem">To date (lead received)<input class="field" type="date" id="dashboardTo" value="${dashboardRange.to}" onchange="applyDashboardDates()"></label>
+ <button class="btn small" onclick="clearDashboardDates()">Clear dates / Show all</button></div>
+ <p class="register-help" style="margin-top:12px;margin-bottom:0">Both dates are included. Leaving a date empty means no limit on that side.</p></div>
+ <div class="stats">
+ <div class="stat stat-link" role="button" tabindex="0" aria-label="View total leads in All Leads" onclick="openDashboardMetric('total')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('total')}"><label>Total leads</label><strong>${s.total}</strong><small>Received in selected period</small></div>
+ <div class="stat stat-link" role="button" tabindex="0" aria-label="View new leads in All Leads" onclick="openDashboardMetric('new')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('new')}"><label>New leads</label><strong>${s.new}</strong><small>Awaiting first contact</small></div>
+ <div class="stat stat-link" role="button" tabindex="0" aria-label="View consultations booked in All Leads" onclick="openDashboardMetric('booked')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('booked')}"><label>Consultations booked</label><strong>${s.booked}</strong><small>Current booked status</small></div>
+ <div class="stat stat-link" role="button" tabindex="0" aria-label="View lost leads in All Leads" onclick="openDashboardMetric('lost')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('lost')}"><label>Lost leads</label><strong>${s.lost}</strong><small>Click to view lost lead table →</small></div>
+ <div class="stat"><label>Converted revenue</label><strong style="font-size:22px">${money(s.revenue)}</strong><small>${s.converted} converted lead(s)</small></div></div>
+ <div class="grid2"><div class="panel"><div class="panelhead"><h2>Follow-ups requiring attention</h2><button class="btn small" onclick="setPage('followups')">View all</button></div>
+ <div class="quicklist">${due.slice(0,5).map(x=>`<div class="quickrow"><div><strong>${esc(x.firstName)} ${esc(x.lastName)}</strong><span class="sub">${esc(x.phone)} · ${esc(x.status)}</span></div><span class="pill No-response">${esc(displayDate(x.followDate))}</span></div>`).join('')||'<div class="empty">No due or overdue follow-ups in this date range.</div>'}</div></div>
+ <div class="panel"><div class="panelhead"><h2>Lead status overview</h2></div><div class="quicklist">${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'].map(st=>`<div class="quickrow"><span>${st}</span><strong>${list.filter(x=>x.status===st).length}</strong></div>`).join('')}</div></div></div>
+ <div class="panel"><div class="panelhead"><h2>Recently added leads</h2><button class="btn small" onclick="setPage('leads')">Open lead list</button></div>${table(sortByLeadDate(list).slice(0,5))}</div>`;
+}
+function leadDate(x){return x.trackerData?.['Date Received']||x.leadDate||x.created||''}
+function dateSortValue(value){
+ if(value===null||value===undefined||value==='')return 0;
+ if(typeof value==='number'&&value>20000&&value<80000)return Date.UTC(1899,11,30)+value*86400000;
+ const raw=String(value).trim();
+ let m=raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+ if(m)return Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]));
+ m=raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+ if(m)return Date.UTC(Number(m[3]),Number(m[2])-1,Number(m[1]));
+ const parsed=Date.parse(raw);
+ return Number.isNaN(parsed)?0:parsed;
+}
+function sortByLeadDate(items){return items.slice().sort((a,b)=>dateSortValue(leadDate(b))-dateSortValue(leadDate(a))||String(b.id||'').localeCompare(String(a.id||'')))}
+function displayDate(value){if(!value)return '—';const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:value}
+function table(items){return `<div class="tablewrap"><table><thead><tr><th>Client</th><th>Lead date</th><th>Phone</th><th>Source</th><th>Campaign</th><th>Status</th><th>Follow-up</th><th>Notes</th><th>Action</th></tr></thead><tbody>${items.map(x=>`<tr><td><span class="person">${esc(x.firstName)} ${esc(x.lastName)}</span></td><td>${esc(displayDate(leadDate(x)))}</td><td>${esc(x.phone)}</td><td>${esc(x.source)}</td><td>${esc(x.trackerData?.Campaign||'—')}</td><td><span class="pill ${x.status.replace(' ','-')}">${esc(x.status)}</span></td><td>${esc(displayDate(x.followDate))}</td><td class="notes-cell" title="${esc(x.notes||x.trackerData?.Notes||'')}">${esc(x.notes||x.trackerData?.Notes||'—')}</td><td><button class="btn small" onclick="editLead('${x.id}')">Edit</button> <button class="btn small" onclick="whatsapp('${encodeURIComponent(x.phone)}')">WhatsApp</button></td></tr>`).join('')||'<tr><td colspan="9" class="empty">No leads found. Add your first lead to get started.</td></tr>'}</tbody></table></div>`}
+function orderedLeadRegister(items){
+ const mode=document.getElementById('leadOrder')?.value||'newest';
+ const sorted=sortByLeadDate(items);
+ return mode==='oldest'?sorted.reverse():sorted;
+}
+function renderLeads(){
+ const sources=[...new Set(leads.map(x=>String(x.source||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+ app.innerHTML=pageHead('All Leads','Client enquiries organized by the date each lead was received.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`
+ <div class="panel"><div class="panelhead"><h2>Lead register</h2><span class="register-count" id="leadCount"></span></div>
+ <p class="register-help">Newest lead dates appear first. Filter by received date (From / To), status, source, or search.</p>
+ <div class="filters" style="margin-bottom:15px">
+ <input class="field search" id="search" placeholder="Search name, phone or notes..." oninput="filterLeads()" aria-label="Search leads">
+ <label class="lead-date-filter">From <input class="field" type="date" id="leadFrom" onchange="filterLeads()" aria-label="Lead date from"></label>
+ <label class="lead-date-filter">To <input class="field" type="date" id="leadTo" onchange="filterLeads()" aria-label="Lead date to"></label>
+ <select class="field" id="leadOrder" onchange="filterLeads()" aria-label="Sort lead dates"><option value="newest">Lead date: Newest first ↓</option><option value="oldest">Lead date: Oldest first ↑</option></select>
+ <select class="field" id="statusFilter" onchange="filterLeads()" aria-label="Filter by status"><option value="">All statuses</option>${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'].map(x=>`<option>${x}</option>`).join('')}</select>
+ <select class="field" id="sourceFilter" onchange="filterLeads()" aria-label="Filter by source"><option value="">All sources</option>${sources.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
+ <button type="button" class="btn small" onclick="resetLeadFilters()">Clear filters</button></div>
+ <div id="leadTable"></div></div>`;
+ filterLeads();
+}
+function resetLeadFilters(){
+ ['search','statusFilter','sourceFilter','leadFrom','leadTo'].forEach(id=>document.getElementById(id).value='');
+ document.getElementById('leadOrder').value='newest';filterLeads();
+}
+function filterLeads(){
+ const q=document.getElementById('search').value.toLowerCase().trim(),st=document.getElementById('statusFilter').value,so=document.getElementById('sourceFilter').value;
+ const from=document.getElementById('leadFrom').value, to=document.getElementById('leadTo').value;
+ const fromMs=from?dateSortValue(from):0,toMs=to?dateSortValue(to):0;
+ const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!st||x.status===st)&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
+ document.getElementById('leadCount').textContent=`Showing ${list.length} of ${leads.length} leads`;
+ document.getElementById('leadTable').innerHTML=table(orderedLeadRegister(list));
+}
+let followupView='all';
+function chooseFollowupView(kind){followupView=kind;renderFollowups()}
+function followupCard(kind,label,count){
+ const active=followupView===kind;
+ return `<div class="stat ${active?'selected':''}" role="button" tabindex="0" aria-pressed="${active}" aria-label="Show ${esc(label)} leads" onclick="chooseFollowupView('${kind}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseFollowupView('${kind}')}" title="Click to view matching leads"><label>${esc(label)}</label><strong>${count}</strong><small>View matching leads →</small></div>`;
+}
+function renderFollowups(){
+ const list=followupCandidates();
+ const interested=list.filter(x=>['Interested','Follow-up Required'].includes(x.status));
+ const unanswered=list.filter(x=>['Called','Called No Answer','No response'].includes(x.status));
+ const attended=list.filter(x=>['Attended','No-show'].includes(x.status));
+ const due=list.filter(x=>x.followDate&&dateSortValue(x.followDate)<=dateSortValue(today()));
+ const groups={interested,unanswered,attended,due,all:list};
+ const titles={interested:'Interested & follow-up required',unanswered:'Called / no answer / no response',attended:'Attended & no-show',due:'Due or overdue follow-ups',all:'All active follow-up leads'};
+ const visible=groups[followupView]||list;
+ const statsHtml=`<div class="stats followup-stats">${followupCard('interested','Interested / follow-up required',interested.length)}${followupCard('unanswered','Called / no answer / no response',unanswered.length)}${followupCard('attended','Attended / no-show',attended.length)}${followupCard('due','Due or overdue',due.length)}${followupCard('all','Total follow-up leads',list.length)}</div>`;
+ const back=followupView==='all'?'':`<button type="button" class="btn small" onclick="chooseFollowupView('all')">Show all follow-ups</button>`;
+ const desc=followupView==='due'?'Follow-up date is today or earlier. Interested leads appear first.':followupView==='interested'?'Interested clients and clients marked Follow-up Required.':followupView==='unanswered'?'Clients marked Called, Called No Answer, or No response.':followupView==='attended'?'Clients marked Attended or No-show, awaiting a final decision.':'Active outreach leads only: Interested, Follow-up Required, Attended, No-show, Called, Called No Answer, and No response. Interested clients first. Lost and Converted are automatically removed.';
+ app.innerHTML=pageHead('Follow-ups','Use this calling queue to update leads until they are Lost or Converted. Booked and New leads remain in their respective sections.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+statsHtml+`
+ <div class="panel"><div class="panelhead"><h2>${titles[followupView]||titles.all} <span class="register-count">(${visible.length})</span></h2>${back}</div>
+ <p class="followup-filter-note">${desc}</p>${visible.length?table(visible):'<div class="empty">No matching follow-up leads.</div>'}</div>`;
+}
+function renderConsultations(){let list=leads.filter(x=>x.consultDate).sort((a,b)=>a.consultDate.localeCompare(b.consultDate));app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`<div class="stats"><div class="stat"><label>Booked</label><strong>${leads.filter(x=>x.status==='Booked').length}</strong></div><div class="stat"><label>Attended</label><strong>${leads.filter(x=>x.status==='Attended').length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${leads.filter(x=>x.status==='No-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${stats().converted}</strong></div></div><div class="panel"><div class="panelhead"><h2>Scheduled consultations</h2></div>${table(list)}</div>`}
+const TD=(x,k)=>String((x.trackerData&&x.trackerData[k])||'').trim();
+const DAYMS=86400000;
+const REP_ROWS=['Meta','LinkedIn','Google / Walk-in','Sleeping leads, but managed to book'];
+function repGroup(x){
+ const raw=TD(x,'Lead Source').toLowerCase(),fc=TD(x,'First Contact Date'),dr=leadDate(x);
+ if(x.sleeping||(fc&&dr&&dateSortValue(dr)-dateSortValue(fc)>=14*DAYMS))return 3;
+ if(raw==='linkedin'||x.source==='LinkedIn')return 1;
+ if(/walk|google/.test(raw))return 2;
+ return 0;
+}
+function repFlags(x){
+ const st=x.status,cs=TD(x,'Contact Status'),oc=TD(x,'Consultation Outcome');
+ const reason=TD(x,'Reason Not Proceeding'),notes=((x.notes||'')+' '+reason).toLowerCase();
+ const converted=st==='Converted'||TD(x,'Sale Converted').toLowerCase()==='yes';
+ const attended=converted||st==='Attended'||oc==='Attended';
+ const noShow=st==='No-show'||oc==='No-show';
+ const booked=attended||noShow||st==='Booked'||!!TD(x,'Booking Date')||oc==='Rescheduled';
+ const noAnswer=cs==='No Answer'||st==='No response'||st==='Called No Answer';
+ const called=!!cs||st!=='New';
+ const notInt=reason==='Not Interested'||/not interested/.test(notes);
+ return{called,noAnswer,booked,attended,noShow,converted,notInt,pending:booked&&!attended&&!noShow,
+  engaged:called&&!noAnswer&&!booked&&!notInt&&st!=='Lost'};
+}
+function reportData(){
+ const a=dateSortValue(document.getElementById('reportFrom').value),b=dateSortValue(document.getElementById('reportTo').value);
+ return leads.filter(l=>{const d=dateSortValue(leadDate(l));return d&&d>=a&&d<=b});
+}
+function generateReport(){
+ const el=document.getElementById('reportResults');
+ const from=document.getElementById('reportFrom').value,to=document.getElementById('reportTo').value;
+ const by=document.getElementById('reportBy').value.trim();
+ if(!from||!to){el.innerHTML='<div class="notice">Please choose both the From date and the To date, then click Generate report.</div>';return}
+ if(dateSortValue(from)>dateSortValue(to)){el.innerHTML='<div class="notice">The From date must be earlier than or the same as the To date.</div>';return}
+ const g=[[],[],[],[]];
+ reportData().forEach(x=>{const grp=repGroup(x);g[grp].push({...repFlags(x),grp})});
+ const ag=l=>{const n=k=>l.filter(f=>f[k]).length;return[l.length,n('called'),n('noAnswer'),n('booked'),n('attended'),n('noShow'),n('converted'),n('notInt'),n('pending')]};
+ const all=[].concat(...g),t=ag(all),per=g.map(ag);
+ const pct=(a,b)=>b?(Math.round(a/b*1000)/10).toFixed(1):'0.0';
+ const callBook=all.filter(f=>f.booked&&f.grp!==2).length;
+ const engaged=all.filter(f=>f.engaged).length;
+ const best=per.map((v,i)=>({i,v})).filter(o=>o.v[0]>0).sort((p,q)=>q.v[6]-p.v[6]||q.v[3]-p.v[3])[0];
+ const nm=['Meta','LinkedIn','Google / Walk-in','Sleeping leads'];
+ const learn=best?`${nm[best.i]} worked best: ${best.v[3]} bookings from ${best.v[0]} leads, ${best.v[4]} attended and ${best.v[6]} clients.`:'';
+ const prio=`Follow up the ${engaged} engaged and ${t[2]} no-answer leads, and confirm the ${t[8]} booked leads who have not yet attended.`;
+ const H=['Lead source','New leads','Called','No answer','Booked','Attended','No-show','Converted','Not interested','Booked, not yet attended'];
+ const row=(n,v,c)=>`<tr class="${c||''}"><td>${n}</td>${v.map(z=>`<td>${z}</td>`).join('')}</tr>`;
+ const rates=[['Booking rate','Booked / New leads',pct(t[3],t[0])],['Attendance rate','Attended / Booked',pct(t[4],t[3])],['No-show rate','No-show / Booked',pct(t[5],t[3])],['Lead-to-client conversion','Converted / Attended',pct(t[6],t[4])],['Phone-to-booking rate','Bookings from calls / Leads called',pct(callBook,t[1])]];
+ el.innerHTML=`<div class="wr">
+ <h1>S’CLINIC | WEEKLY LEAD PERFORMANCE</h1>
+ <p class="wmeta">Reporting week: <b>${displayDate(from)} – ${displayDate(to)}</b> &nbsp;&nbsp; Prepared by: <b>${esc(by)||'__________'}</b></p>
+ <h3>1. Lead funnel by source</h3><div class="tablewrap"><table><thead><tr>${H.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
+ ${per.map((v,i)=>row(REP_ROWS[i],v,i===3?'yel':'')).join('')}${row('TOTAL',t,'tot')}</tbody></table></div>
+ <p class="wnote">Called = unique leads who received a phone call. No answer = leads with no response to outreach. A lead may appear in more than one stage.</p>
+ <h3>2. Key conversion rates</h3><table><thead><tr><th>Metric</th><th>Calculation</th><th>Result</th></tr></thead><tbody>${rates.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]} %</td></tr>`).join('')}</tbody></table>
+ <h3>3. Phone outreach &amp; next-week follow-up</h3><table><thead><tr><th>Calls answered</th><th>Bookings generated by calls</th><th>Leads to follow up next week</th></tr></thead><tbody><tr><td>${t[1]}</td><td>${callBook}</td><td>${t[2]} no answer<br>${engaged} engaged</td></tr></tbody></table>
+ <p class="wnote">Count unique leads, not repeat attempts. Next-week follow-ups may include leads from previous weeks.</p>
+ <h3>4. Weekly learning &amp; next action</h3><label class="wl">What worked best this week?</label><textarea class="wt">${esc(learn)}</textarea>
+ <label class="wl">What is the single priority for next week?</label><textarea class="wt">${esc(prio)}</textarea>
+ ${all.length?'':'<div class="notice noprint">No leads have a Lead date inside this period.</div>'}</div>`;
+}
+function renderReports(){
+ app.innerHTML=pageHead('Reports','Enter the dates yourself, then generate the weekly lead performance report.',`<button type="button" class="btn" onclick="exportCSV()">Export CSV</button>`)+`
+ <div class="panel noprint"><div class="panelhead"><h2>Select report period</h2></div>
+  <div class="filters">
+   <label class="formitem">From date<input class="field" id="reportFrom" type="date"></label>
+   <label class="formitem">To date<input class="field" id="reportTo" type="date"></label>
+   <label class="formitem">Prepared by<input class="field" id="reportBy" placeholder="Name"></label>
+   <button type="button" class="btn primary" id="generateReportBtn">Generate report</button>
+   <button type="button" class="btn" id="printReportBtn">Print / Save PDF</button>
+  </div></div>
+ <div class="panel" id="reportResults"><div class="notice">Choose the From and To dates, then click Generate report.</div></div>`;
+ document.getElementById('generateReportBtn').addEventListener('click',generateReport);
+ document.getElementById('printReportBtn').addEventListener('click',()=>window.print());
+}
+function renderSettings(){app.innerHTML=pageHead('Settings','CRM details and local data management.')+`<div class="panel"><h2>Clinic details</h2><div class="quicklist" style="margin-top:14px"><div class="quickrow"><span>Clinic</span><strong>S’CLINIC</strong></div><div class="quickrow"><span>WhatsApp Business number</span><strong>+971 58 676 7298</strong></div><div class="quickrow"><span>Account setup</span><strong>Shared staff access</strong></div><div class="quickrow"><span>Lead sources</span><strong>Instagram · Facebook · NA · LinkedIn</strong></div><div class="quickrow"><span>Platform</span><strong>Supabase cloud / browser-based</strong></div></div><div class="notice"><strong>WhatsApp connection status: Not connected.</strong><br>This standalone HTML file can open a WhatsApp chat using the saved number, but it cannot automatically receive WhatsApp messages or sync chats. Automated lead capture requires a secure server and an approved Meta WhatsApp Business Platform integration.</div></div><div class="panel"><h2>Data backup</h2><p style="color:var(--muted)">Your leads are saved to your secure shared Supabase database when you edit them. Download a JSON backup periodically for disaster recovery.</p><button class="btn" onclick="exportCSV()">Download lead register (CSV)</button> <button class="btn" onclick="backupJSON()">Download backup (JSON)</button> <div class="notice">Important: HTML-only storage is not cloud storage. Records are stored in the shared cloud database. Refresh to see changes from another device. Export backups regularly. Do not store medical records, scalp photos or sensitive clinical information in this prototype.</div></div>`}
+function openModal(id=''){document.getElementById('leadForm').reset();document.getElementById('editId').value='';document.getElementById('modalTitle').textContent=id?'Edit lead':'Add new lead';document.getElementById('leadDateInput').value=today();if(id){let x=leads.find(l=>l.id===id);if(!x)return;document.getElementById('editId').value=x.id;['firstName','lastName','phone','source','status','followDate','consultDate','value','notes'].forEach(k=>document.getElementById(k).value=x[k]??'');document.getElementById('leadDateInput').value=leadDate(x)}document.getElementById('leadModal').classList.add('show')}
+function closeModal(){document.getElementById('leadModal').classList.remove('show')}
+function editLead(id){openModal(id)}
+document.getElementById('leadForm').addEventListener('submit',async e=>{e.preventDefault();let id=document.getElementById('editId').value,phone=document.getElementById('phone').value.trim();let duplicate=leads.find(x=>x.phone.replace(/\D/g,'')===phone.replace(/\D/g,'')&&x.id!==id);if(duplicate&&!confirm('A lead with this phone number already exists. Save another record anyway?'))return;let previous=id?leads.find(l=>l.id===id):null;let trackerData={...(previous?.trackerData||{}),'Date Received':document.getElementById('leadDateInput').value,'Next Follow-up Date':document.getElementById('followDate').value,'Consultation Date':document.getElementById('consultDate').value,'Notes':document.getElementById('notes').value,'Lead Source':document.getElementById('source').value,'Sale Value (AED)':document.getElementById('value').value};
+ const newStatus=document.getElementById('status').value;
+ trackerData['CRM Status']=newStatus;
+ if(newStatus==='Converted'){trackerData['Sale Converted']='Yes';trackerData['Lead Status']='Converted';}
+ else {trackerData['Sale Converted']='';trackerData['Lead Status']=newStatus==='Lost'?'Not Proceeding':newStatus==='Interested'||newStatus==='Follow-up Required'?'Follow-up Required':newStatus==='No response'||newStatus==='Called No Answer'?'Contact Attempted':newStatus;}
+let x={id:id||('L'+Date.now()),firstName:document.getElementById('firstName').value.trim(),lastName:document.getElementById('lastName').value.trim(),phone,source:document.getElementById('source').value,status:document.getElementById('status').value,followDate:document.getElementById('followDate').value,consultDate:document.getElementById('consultDate').value,value:document.getElementById('value').value,notes:document.getElementById('notes').value,created:previous?previous.created:today(),trackerData};if(id)leads=leads.map(l=>l.id===id?x:l);else leads.push(x);savePending=true;
+ try{await saveCloudLead(x);closeModal();render();}catch(err){await loadCloud();alert('Lead was not saved: '+err.message)}finally{savePending=false;}
+});
+function whatsapp(phone){let raw=decodeURIComponent(phone).replace(/\D/g,'');window.open('https://wa.me/'+raw,'_blank','noopener')}
+function exportCSV(){let cols=['firstName','lastName','phone','source','status','followDate','consultDate','value','notes','leadDate','created'];let rows=[cols.join(','),...leads.map(x=>cols.map(k=>'"'+String(k==='leadDate'?leadDate(x):(x[k]??'')).replace(/"/g,'""')+'"').join(','))];download('sclinic-leads.csv',rows.join('\n'),'text/csv')}
+function backupJSON(automatic=false){
+ const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+ download('sclinic-crm-backup-'+stamp+'.json',JSON.stringify(leads,null,2),'application/json');
+}
+function restoreJSON(){alert('To import another backup into the shared CRM, contact your administrator. This prevents accidental overwrites.')}
+function download(name,data,type){let a=document.createElement('a'),u=URL.createObjectURL(new Blob([data],{type}));a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
+setupCloud();
+</script>
+</body>
+</html>
