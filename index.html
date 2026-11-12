@@ -201,7 +201,7 @@ let page='dashboard';
 const app=document.getElementById('app');
 const money=n=>'AED '+Number(n||0).toLocaleString('en-AE',{maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lead Source']||'').trim().toLowerCase();const campaign=String(x.trackerData?.Campaign||'').toLowerCase();if(original==='linkedin'||campaign==='linkedin')return 'LinkedIn';if(original==='instagram'||campaign.includes('instagram'))return 'Instagram';if(original==='facebook'||campaign.includes('facebook'))return 'Facebook';return 'NA';}
 leads=leads.map(x=>({...x,source:normalizeSource(x)}));
 const getDue=()=>leads.filter(x=>x.followDate&&x.followDate<=today()&&!['Converted','Lost'].includes(x.status));
@@ -236,7 +236,7 @@ function followupPriority(x){
  return 3;
 }
 function followupCandidates(items=leads){
- return items.filter(x=>FOLLOWUP_ACTIVE_STATUSES.includes(x.status))
+ return items.filter(x=>!['Lost','Converted'].includes(x.status)&&(FOLLOWUP_ACTIVE_STATUSES.includes(x.status)||(dateSortValue(leadDate(x))>0&&dateSortValue(leadDate(x))<dateSortValue(today()))))
  .sort((a,b)=>followupPriority(a)-followupPriority(b)||
  (a.followDate?dateSortValue(a.followDate):Number.MAX_SAFE_INTEGER)-(b.followDate?dateSortValue(b.followDate):Number.MAX_SAFE_INTEGER)||
  dateSortValue(leadDate(b))-dateSortValue(leadDate(a)));
@@ -337,8 +337,8 @@ function renderFollowups(){
  const visible=groups[followupView]||list;
  const statsHtml=`<div class="stats followup-stats">${followupCard('interested','Interested / follow-up required',interested.length)}${followupCard('unanswered','Called / no answer / no response',unanswered.length)}${followupCard('attended','Attended / no-show',attended.length)}${followupCard('due','Due or overdue',due.length)}${followupCard('all','Total follow-up leads',list.length)}</div>`;
  const back=followupView==='all'?'':`<button type="button" class="btn small" onclick="chooseFollowupView('all')">Show all follow-ups</button>`;
- const desc=followupView==='due'?'Follow-up date is today or earlier. Interested leads appear first.':followupView==='interested'?'Interested clients and clients marked Follow-up Required.':followupView==='unanswered'?'Clients marked Called, Called No Answer, or No response.':followupView==='attended'?'Clients marked Attended or No-show, awaiting a final decision.':'Active outreach leads only: Interested, Follow-up Required, Attended, No-show, Called, Called No Answer, and No response. Interested clients first. Lost and Converted are automatically removed.';
- app.innerHTML=pageHead('Follow-ups','Use this calling queue to update leads until they are Lost or Converted. Booked and New leads remain in their respective sections.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+statsHtml+`
+ const desc=followupView==='due'?'Follow-up date is today or earlier. Interested leads appear first.':followupView==='interested'?'Interested clients and clients marked Follow-up Required.':followupView==='unanswered'?'Clients marked Called, Called No Answer, or No response.':followupView==='attended'?'Clients marked Attended or No-show, awaiting a final decision.':'Includes all leads received before today that are not Lost or Converted, even if still New or Booked, plus active outreach leads from today. Updates automatically each day (Dubai time). Interested clients first.';
+ app.innerHTML=pageHead('Follow-ups','Yesterday’s and older leads automatically join this queue unless Lost or Converted. Today’s New and Booked leads remain in their respective sections.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+statsHtml+`
  <div class="panel"><div class="panelhead"><h2>${titles[followupView]||titles.all} <span class="register-count">(${visible.length})</span></h2>${back}</div>
  <p class="followup-filter-note">${desc}</p>${visible.length?table(visible):'<div class="empty">No matching follow-up leads.</div>'}</div>`;
 }
