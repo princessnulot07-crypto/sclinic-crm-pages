@@ -236,7 +236,7 @@ function followupPriority(x){
  return 3;
 }
 function followupCandidates(items=leads){
- return items.filter(x=>!['Lost','Converted'].includes(x.status)&&(FOLLOWUP_ACTIVE_STATUSES.includes(x.status)||(dateSortValue(leadDate(x))>0&&dateSortValue(leadDate(x))<dateSortValue(today()))))
+ return items.filter(x=>!['Lost','Converted','Booked','Attended'].includes(x.status)&&(FOLLOWUP_ACTIVE_STATUSES.includes(x.status)||(dateSortValue(leadDate(x))>0&&dateSortValue(leadDate(x))<dateSortValue(today()))))
  .sort((a,b)=>followupPriority(a)-followupPriority(b)||
  (a.followDate?dateSortValue(a.followDate):Number.MAX_SAFE_INTEGER)-(b.followDate?dateSortValue(b.followDate):Number.MAX_SAFE_INTEGER)||
  dateSortValue(leadDate(b))-dateSortValue(leadDate(a)));
