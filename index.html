@@ -360,11 +360,15 @@ function repFlags(x){
  const attended=converted||st==='Attended'||oc==='Attended';
  const noShow=st==='No-show'||oc==='No-show';
  const booked=attended||noShow||st==='Booked'||!!TD(x,'Booking Date')||oc==='Rescheduled';
- const noAnswer=cs==='No Answer'||st==='No response'||st==='Called No Answer';
- const called=!!cs||st!=='New';
+ const historicalNoResponse=Array.isArray(x.statusHistory)&&x.statusHistory.some(h=>h.from==='No response'&&h.to==='Lost');
+ const noAnswer=cs==='No Answer'||st==='No response'||st==='Called No Answer'||historicalNoResponse;
+ // Count unique leads with recorded outreach, not call attempts or answered calls.
+ const called=['Contacted','No Answer','Answered'].includes(cs)||['Called','Called No Answer','No response'].includes(st)||historicalNoResponse;
+ const notCalledOrUnconfirmed=!called;
  const notInt=reason==='Not Interested'||/not interested/.test(notes);
- return{called,noAnswer,booked,attended,noShow,converted,notInt,pending:booked&&!attended&&!noShow,
-  engaged:called&&!noAnswer&&!booked&&!notInt&&st!=='Lost'};
+ const answered=cs==='Answered'||(!noAnswer&&['Interested','Follow-up','Follow-up Required','Booked','Attended','No-show','Converted'].includes(st));
+ return{called,notCalledOrUnconfirmed,noAnswer,answered,booked,attended,noShow,converted,notInt,pending:booked&&!attended&&!noShow,
+  engaged:answered&&!booked&&!notInt&&st!=='Lost'};
 }
 function reportData(){
  const a=dateSortValue(document.getElementById('reportFrom').value),b=dateSortValue(document.getElementById('reportTo').value);
@@ -378,27 +382,27 @@ function generateReport(){
  if(dateSortValue(from)>dateSortValue(to)){el.innerHTML='<div class="notice">The From date must be earlier than or the same as the To date.</div>';return}
  const g=[[],[],[],[]];
  reportData().forEach(x=>{const grp=repGroup(x);g[grp].push({...repFlags(x),grp})});
- const ag=l=>{const n=k=>l.filter(f=>f[k]).length;return[l.length,n('called'),n('noAnswer'),n('booked'),n('attended'),n('noShow'),n('converted'),n('notInt'),n('pending')]};
+ const ag=l=>{const n=k=>l.filter(f=>f[k]).length;return[l.length,n('called'),n('notCalledOrUnconfirmed'),n('booked'),n('attended'),n('noShow'),n('converted'),n('notInt'),n('pending'),n('noAnswer'),n('answered')]};
  const all=[].concat(...g),t=ag(all),per=g.map(ag);
  const pct=(a,b)=>b?(Math.round(a/b*1000)/10).toFixed(1):'0.0';
- const callBook=all.filter(f=>f.booked&&f.grp!==2).length;
+ const callBook=all.filter(f=>f.booked&&f.called).length;
  const engaged=all.filter(f=>f.engaged).length;
  const best=per.map((v,i)=>({i,v})).filter(o=>o.v[0]>0).sort((p,q)=>q.v[6]-p.v[6]||q.v[3]-p.v[3])[0];
  const nm=['Meta','LinkedIn','Google / Walk-in','Sleeping leads'];
  const learn=best?`${nm[best.i]} worked best: ${best.v[3]} bookings from ${best.v[0]} leads, ${best.v[4]} attended and ${best.v[6]} clients.`:'';
- const prio=`Follow up the ${engaged} engaged and ${t[2]} no-answer leads, and confirm the ${t[8]} booked leads who have not yet attended.`;
- const H=['Lead source','New leads','Called','No answer','Booked','Attended','No-show','Converted','Not interested','Booked, not yet attended'];
+ const prio=`Follow up the ${engaged} engaged active leads and confirm the ${t[8]} booked leads who have not yet attended. Lost leads are excluded from active follow-ups.`;
+ const H=['Lead source','Total leads','Calls / outreach recorded','Not called / unconfirmed','Booked','Attended','No-show','Converted','Not interested','Booked, not yet attended','No answer recorded','Answered / engaged'];
  const row=(n,v,c)=>`<tr class="${c||''}"><td>${n}</td>${v.map(z=>`<td>${z}</td>`).join('')}</tr>`;
- const rates=[['Booking rate','Booked / New leads',pct(t[3],t[0])],['Attendance rate','Attended / Booked',pct(t[4],t[3])],['No-show rate','No-show / Booked',pct(t[5],t[3])],['Lead-to-client conversion','Converted / Attended',pct(t[6],t[4])],['Phone-to-booking rate','Bookings from calls / Leads called',pct(callBook,t[1])]];
+ const rates=[['Booking rate','Booked / New leads',pct(t[3],t[0])],['Attendance rate','Attended / Booked',pct(t[4],t[3])],['No-show rate','No-show / Booked',pct(t[5],t[3])],['Lead-to-client conversion','Converted / Attended',pct(t[6],t[4])],['Outreach-to-booking rate','Bookings with outreach / Leads with outreach',pct(callBook,t[1])]];
  el.innerHTML=`<div class="wr">
  <h1>S’CLINIC | WEEKLY LEAD PERFORMANCE</h1>
  <p class="wmeta">Reporting week: <b>${displayDate(from)} – ${displayDate(to)}</b> &nbsp;&nbsp; Prepared by: <b>${esc(by)||'__________'}</b></p>
  <h3>1. Lead funnel by source</h3><div class="tablewrap"><table><thead><tr>${H.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
  ${per.map((v,i)=>row(REP_ROWS[i],v,i===3?'yel':'')).join('')}${row('TOTAL',t,'tot')}</tbody></table></div>
- <p class="wnote">Called = unique leads who received a phone call. No answer = leads with no response to outreach. A lead may appear in more than one stage.</p>
+ <p class="wnote">Calls / outreach recorded = unique leads with a recorded contact status or calling stage (not necessarily answered calls). Not called / unconfirmed = Total leads minus recorded outreach. These two categories always sum to Total leads. No answer recorded is a separate overlapping measure that includes historical no-response leads moved to Lost. Answered / engaged is based on explicit engagement, not proof of a phone call being answered.</p>
  <h3>2. Key conversion rates</h3><table><thead><tr><th>Metric</th><th>Calculation</th><th>Result</th></tr></thead><tbody>${rates.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]} %</td></tr>`).join('')}</tbody></table>
- <h3>3. Phone outreach &amp; next-week follow-up</h3><table><thead><tr><th>Calls answered</th><th>Bookings generated by calls</th><th>Leads to follow up next week</th></tr></thead><tbody><tr><td>${t[1]}</td><td>${callBook}</td><td>${t[2]} no answer<br>${engaged} engaged</td></tr></tbody></table>
- <p class="wnote">Count unique leads, not repeat attempts. Next-week follow-ups may include leads from previous weeks.</p>
+ <h3>3. Phone outreach &amp; next-week follow-up</h3><table><thead><tr><th>Calls / outreach recorded</th><th>No answer recorded</th><th>Active engaged leads to follow up</th></tr></thead><tbody><tr><td>${t[1]}</td><td>${t[9]}</td><td>${engaged} engaged</td></tr></tbody></table>
+ <p class="wnote">Count unique leads, not repeat attempts. A call with no answer can be counted in both outreach recorded and no answer recorded; only the first two funnel categories reconcile to total leads. Lost leads are excluded from active follow-up suggestions.</p>
  <h3>4. Weekly learning &amp; next action</h3><label class="wl">What worked best this week?</label><textarea class="wt">${esc(learn)}</textarea>
  <label class="wl">What is the single priority for next week?</label><textarea class="wt">${esc(prio)}</textarea>
  ${all.length?'':'<div class="notice noprint">No leads have a Lead date inside this period.</div>'}</div>`;
