@@ -254,7 +254,7 @@ function openDashboardMetric(kind){
 function renderDashboard(){
  const list=dashboardFilteredLeads();
  const s={total:list.length,new:list.filter(x=>x.status==='New').length,booked:list.filter(x=>x.status==='Booked').length,converted:list.filter(x=>x.status==='Converted').length,lost:list.filter(x=>x.status==='Lost').length,revenue:list.filter(x=>x.status==='Converted').reduce((n,x)=>n+Number(x.value||0),0)};
- const due=followupCandidates(list).filter(x=>x.followDate&&dateSortValue(x.followDate)<=dateSortValue(today()));
+ const due=followupCandidates(list).filter(x=>(dateSortValue(leadDate(x))>0&&dateSortValue(leadDate(x))<dateSortValue(today()))||(x.followDate&&dateSortValue(x.followDate)<=dateSortValue(today())));
  app.innerHTML=pageHead('Good day','Overview by lead received date. Select a date range to filter every dashboard section.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`
  <div class="panel dashboard-date-panel"><div class="panelhead"><h2>Dashboard date filter</h2><span class="register-count">${list.length} of ${leads.length} leads</span></div>
  <div class="filters"><label class="formitem">From date (lead received)<input class="field" type="date" id="dashboardFrom" value="${dashboardRange.from}" onchange="applyDashboardDates()"></label>
@@ -268,7 +268,7 @@ function renderDashboard(){
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View lost leads in All Leads" onclick="openDashboardMetric('lost')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('lost')}"><label>Lost leads</label><strong>${s.lost}</strong><small>Click to view lost lead table →</small></div>
  <div class="stat"><label>Converted revenue</label><strong style="font-size:22px">${money(s.revenue)}</strong><small>${s.converted} converted lead(s)</small></div></div>
  <div class="grid2"><div class="panel"><div class="panelhead"><h2>Follow-ups requiring attention</h2><button class="btn small" onclick="setPage('followups')">View all</button></div>
- <div class="quicklist">${due.slice(0,5).map(x=>`<div class="quickrow"><div><strong>${esc(x.firstName)} ${esc(x.lastName)}</strong><span class="sub">${esc(x.phone)} · ${esc(x.status)}</span></div><span class="pill No-response">${esc(displayDate(x.followDate))}</span></div>`).join('')||'<div class="empty">No due or overdue follow-ups in this date range.</div>'}</div></div>
+ <div class="quicklist">${due.map(x=>`<div class="quickrow"><div><strong>${esc(x.firstName)} ${esc(x.lastName)}</strong><span class="sub">${esc(x.phone)} · ${esc(x.status)}</span></div><span class="pill No-response">${esc(displayDate(x.followDate||leadDate(x)))}</span></div>`).join('')||'<div class="empty">No follow-ups requiring attention in this date range.</div>'}</div></div>
  <div class="panel"><div class="panelhead"><h2>Lead status overview</h2></div><div class="quicklist">${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'].map(st=>`<div class="quickrow"><span>${st}</span><strong>${list.filter(x=>x.status===st).length}</strong></div>`).join('')}</div></div></div>
  <div class="panel"><div class="panelhead"><h2>Recently added leads</h2><button class="btn small" onclick="setPage('leads')">Open lead list</button></div>${table(sortByLeadDate(list).slice(0,5))}</div>`;
 }
