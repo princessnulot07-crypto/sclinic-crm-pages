@@ -266,8 +266,11 @@ function followupCandidates(items=leads){
  dateSortValue(leadDate(b))-dateSortValue(leadDate(a)));
 }
 // Dashboard metric shortcuts carry the dashboard received-date range into All Leads.
+let bookedDashboardView=false;
+const isBookedLead=x=>x.status==='Booked'||!!String(x.trackerData?.['Booking Date']||'').trim();
 function openDashboardMetric(kind){
- const status=kind==='new'?'New':kind==='booked'?'Booked':kind==='lost'?'Lost':kind==='converted'?'Converted':'';
+ bookedDashboardView=kind==='booked';
+ const status=kind==='new'?'New':kind==='lost'?'Lost':kind==='converted'?'Converted':'';
  setPage('leads');
  document.getElementById('leadFrom').value=dashboardRange.from;
  document.getElementById('leadTo').value=dashboardRange.to;
@@ -277,7 +280,7 @@ function openDashboardMetric(kind){
 }
 function renderDashboard(){
  const list=dashboardFilteredLeads();
- const s={total:list.length,new:list.filter(x=>x.status==='New').length,booked:list.filter(x=>x.status==='Booked').length,converted:list.filter(x=>x.status==='Converted').length,lost:list.filter(x=>x.status==='Lost').length,revenue:list.filter(x=>x.status==='Converted').reduce((n,x)=>n+(saleAmount(x)||0),0)};
+ const s={total:list.length,new:list.filter(x=>x.status==='New').length,booked:list.filter(isBookedLead).length,converted:list.filter(x=>x.status==='Converted').length,lost:list.filter(x=>x.status==='Lost').length,revenue:list.filter(x=>x.status==='Converted').reduce((n,x)=>n+(saleAmount(x)||0),0)};
  const due=followupCandidates(list).filter(x=>!['Booked','Attended','Converted','Lost'].includes(x.status)&&((dateSortValue(leadDate(x))>0&&dateSortValue(leadDate(x))<dateSortValue(today()))||(x.followDate&&dateSortValue(x.followDate)<=dateSortValue(today()))));
  app.innerHTML=pageHead('Good day','Overview by lead received date. Select a date range to filter every dashboard section.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`
  <div class="panel dashboard-date-panel"><div class="panelhead"><h2>Dashboard date filter</h2><span class="register-count">${list.length} of ${leads.length} leads</span></div>
@@ -288,7 +291,7 @@ function renderDashboard(){
  <div class="stats">
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View total leads in All Leads" onclick="openDashboardMetric('total')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('total')}"><label>Total leads</label><strong>${s.total}</strong><small>Received in selected period</small></div>
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View new leads in All Leads" onclick="openDashboardMetric('new')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('new')}"><label>New leads</label><strong>${s.new}</strong><small>Awaiting first contact</small></div>
- <div class="stat stat-link" role="button" tabindex="0" aria-label="View consultations booked in All Leads" onclick="openDashboardMetric('booked')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('booked')}"><label>Consultations booked</label><strong>${s.booked}</strong><small>Current booked status</small></div>
+ <div class="stat stat-link" role="button" tabindex="0" aria-label="View consultations booked in All Leads" onclick="openDashboardMetric('booked')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('booked')}"><label>Consultations booked</label><strong>${s.booked}</strong><small>Click to view booked clients →</small></div>
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View lost leads in All Leads" onclick="openDashboardMetric('lost')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('lost')}"><label>Lost leads</label><strong>${s.lost}</strong><small>Click to view lost lead table →</small></div>
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View converted clients in All Leads" onclick="openDashboardMetric('converted')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('converted')}"><label>Converted revenue</label><strong style="font-size:22px">${money(s.revenue)}</strong><small>${s.converted} converted lead(s) · View clients →</small></div></div>
  <div class="grid2"><div class="panel"><div class="panelhead"><h2>Follow-ups requiring attention</h2><button class="btn small" onclick="setPage('followups')">View all</button></div>
@@ -333,6 +336,7 @@ function renderLeads(){
  filterLeads();
 }
 function resetLeadFilters(){
+ bookedDashboardView=false;
  ['search','statusFilter','sourceFilter','leadFrom','leadTo'].forEach(id=>document.getElementById(id).value='');
  document.getElementById('leadOrder').value='newest';filterLeads();
 }
@@ -340,8 +344,8 @@ function filterLeads(){
  const q=document.getElementById('search').value.toLowerCase().trim(),st=document.getElementById('statusFilter').value,so=document.getElementById('sourceFilter').value;
  const from=document.getElementById('leadFrom').value, to=document.getElementById('leadTo').value;
  const fromMs=from?dateSortValue(from):0,toMs=to?dateSortValue(to):0;
- const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!st||x.status===st)&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
- document.getElementById('leadCount').textContent=`Showing ${list.length} of ${leads.length} leads`;
+ const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!bookedDashboardView||isBookedLead(x))&&(`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!st||x.status===st)&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
+ document.getElementById('leadCount').textContent=`${bookedDashboardView?'Booked clients · ':''}Showing ${list.length} of ${leads.length} leads`;
  document.getElementById('leadTable').innerHTML=table(orderedLeadRegister(list));
 }
 let followupView='all';
