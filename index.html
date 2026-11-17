@@ -136,13 +136,20 @@ const statusEl=()=>document.getElementById('saveStatus');
 function saveIndicator(message,error=false){const el=statusEl();if(el){el.textContent=message;el.classList.toggle('error',error)}}
 function validBackup(value){return Array.isArray(value)&&value.every(x=>x&&typeof x==='object'&&typeof x.id==='string'&&typeof x.firstName==='string')}
 function save(){return cloudReady;}
+let cloudLoadInProgress=false;
+let cloudRefreshTimer=null;
+function scheduleCloudRefresh(){
+ clearTimeout(cloudRefreshTimer);
+ cloudRefreshTimer=setTimeout(()=>{if(activeUser&&!savePending)loadCloud()},5000);
+}
 async function loadCloud(){
- if(!activeUser)return;
+ if(!activeUser||cloudLoadInProgress)return;
+ cloudLoadInProgress=true;
  saveIndicator('Loading leads from secure cloud…');
  const rows=[];
  for(let offset=0;;offset+=500){
   const {data,error}=await sb.from('leads').select('id,payload').order('id').range(offset,offset+499);
-  if(error){saveIndicator('Could not load leads: '+error.message,true);return}
+  if(error){cloudLoadInProgress=false;saveIndicator('Could not load leads: '+error.message,true);return}
   rows.push(...data);if(data.length<500)break;
  }
  leads=rows.map(x=>x.payload);cloudReady=true;
@@ -152,6 +159,7 @@ async function loadCloud(){
  if(page==='leads'&&document.getElementById('leadTable')&&document.getElementById('search')){
   filterLeads();
  }else render();
+ cloudLoadInProgress=false;
 }
 async function saveCloudLead(lead){
  if(!activeUser||!cloudReady)throw Error('Please sign in and load the CRM first');
@@ -179,7 +187,9 @@ async function setupCloud(){
  document.getElementById('accountLabel').textContent=user.email+' ('+membership.role+')';
  await loadCloud();
  if(cloudChannel)await sb.removeChannel(cloudChannel);
- cloudChannel=sb.channel('crm-leads-sync').on('postgres_changes',{event:'*',schema:'public',table:'leads'},()=>{if(!savePending)loadCloud()}).subscribe();
+ cloudChannel=sb.channel('crm-leads-sync').on('postgres_changes',{event:'*',schema:'public',table:'leads'},()=>{
+  if(!savePending)scheduleCloudRefresh();
+ }).subscribe();
  // Fallback refresh covers projects without Realtime publication enabled.
  window.addEventListener('focus',()=>{if(activeUser&&!savePending)loadCloud()});
 }
