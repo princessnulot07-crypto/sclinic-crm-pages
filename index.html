@@ -269,7 +269,8 @@ function followupCandidates(items=leads){
 let bookedDashboardView=false;
 const isBookedLead=x=>x.status==='Booked'||!!String(x.trackerData?.['Booking Date']||'').trim();
 function openDashboardMetric(kind){
- bookedDashboardView=kind==='booked';
+ if(kind==='booked'){setPage('consultations');return;}
+ bookedDashboardView=false;
  const status=kind==='new'?'New':kind==='lost'?'Lost':kind==='converted'?'Converted':'';
  setPage('leads');
  document.getElementById('leadFrom').value=dashboardRange.from;
@@ -370,7 +371,7 @@ function renderFollowups(){
  <div class="panel"><div class="panelhead"><h2>${titles[followupView]||titles.all} <span class="register-count">(${visible.length})</span></h2>${back}</div>
  <p class="followup-filter-note">${desc}</p>${visible.length?table(visible):'<div class="empty">No matching follow-up leads.</div>'}</div>`;
 }
-function renderConsultations(){let list=leads.filter(x=>x.consultDate).sort((a,b)=>a.consultDate.localeCompare(b.consultDate));app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`<div class="stats"><div class="stat"><label>Booked</label><strong>${leads.filter(x=>x.status==='Booked').length}</strong></div><div class="stat"><label>Attended</label><strong>${leads.filter(x=>x.status==='Attended').length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${leads.filter(x=>x.status==='No-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${stats().converted}</strong></div></div><div class="panel"><div class="panelhead"><h2>Scheduled consultations</h2></div>${table(list)}</div>`}
+function renderConsultations(){let list=leads.filter(x=>isBookedLead(x)||x.consultDate).sort((a,b)=>String(a.consultDate||a.trackerData?.['Booking Date']||'').localeCompare(String(b.consultDate||b.trackerData?.['Booking Date']||'')));app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`<div class="stats"><div class="stat"><label>Booked</label><strong>${leads.filter(isBookedLead).length}</strong></div><div class="stat"><label>Attended</label><strong>${leads.filter(x=>x.status==='Attended').length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${leads.filter(x=>x.status==='No-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${stats().converted}</strong></div></div><div class="panel"><div class="panelhead"><h2>Booked clients and scheduled consultations</h2></div>${table(list)}</div>`}
 const TD=(x,k)=>String((x.trackerData&&x.trackerData[k])||'').trim();
 const DAYMS=86400000;
 const REP_ROWS=['Meta','LinkedIn','Google / Walk-in','Sleeping leads, but managed to book'];
