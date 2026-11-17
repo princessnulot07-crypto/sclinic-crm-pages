@@ -213,7 +213,13 @@ async function logoutCRM(){if(cloudChannel)await sb.removeChannel(cloudChannel);
 async function resetCRMPassword(){const email=document.getElementById('loginEmail').value.trim();if(!email){document.getElementById('loginMessage').textContent='Enter your email first.';return}const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});document.getElementById('loginMessage').textContent=error?error.message:'If this account exists, a password reset email has been sent.'}
 let page='dashboard';
 const app=document.getElementById('app');
-const money=n=>'AED '+Number(n||0).toLocaleString('en-AE',{maximumFractionDigits:2});
+const saleAmount=x=>{
+ const raw=String(x?.trackerData?.['Sale Value (AED)']||x?.value||'').trim();
+ if(!raw)return null;
+ const number=Number(raw.replace(/[^0-9.-]/g,''));
+ return Number.isFinite(number)?number:null;
+};
+const money=n=>'AED '+Number(n||0).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function displayLeadStatus(x){
@@ -223,7 +229,7 @@ function displayLeadStatus(x){
 function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lead Source']||'').trim().toLowerCase();const campaign=String(x.trackerData?.Campaign||'').toLowerCase();if(original==='linkedin'||campaign==='linkedin')return 'LinkedIn';if(original==='instagram'||campaign.includes('instagram'))return 'Instagram';if(original==='facebook'||campaign.includes('facebook'))return 'Facebook';return 'NA';}
 leads=leads.map(x=>({...x,source:normalizeSource(x)}));
 const getDue=()=>leads.filter(x=>x.followDate&&x.followDate<=today()&&!['Converted','Lost'].includes(x.status));
-function stats(){return {total:leads.length,new:leads.filter(x=>x.status==='New').length,booked:leads.filter(x=>x.status==='Booked').length,converted:leads.filter(x=>x.status==='Converted').length,revenue:leads.filter(x=>x.status==='Converted').reduce((s,x)=>s+Number(x.value||0),0)}}
+function stats(){return {total:leads.length,new:leads.filter(x=>x.status==='New').length,booked:leads.filter(x=>x.status==='Booked').length,converted:leads.filter(x=>x.status==='Converted').length,revenue:leads.filter(x=>x.status==='Converted').reduce((s,x)=>s+(saleAmount(x)||0),0)}}
 function setPage(p){page=p;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
 function pageHead(title,desc,action=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div>${action}</div>`}
@@ -271,7 +277,7 @@ function openDashboardMetric(kind){
 }
 function renderDashboard(){
  const list=dashboardFilteredLeads();
- const s={total:list.length,new:list.filter(x=>x.status==='New').length,booked:list.filter(x=>x.status==='Booked').length,converted:list.filter(x=>x.status==='Converted').length,lost:list.filter(x=>x.status==='Lost').length,revenue:list.filter(x=>x.status==='Converted').reduce((n,x)=>n+Number(x.value||0),0)};
+ const s={total:list.length,new:list.filter(x=>x.status==='New').length,booked:list.filter(x=>x.status==='Booked').length,converted:list.filter(x=>x.status==='Converted').length,lost:list.filter(x=>x.status==='Lost').length,revenue:list.filter(x=>x.status==='Converted').reduce((n,x)=>n+(saleAmount(x)||0),0)};
  const due=followupCandidates(list).filter(x=>!['Booked','Attended','Converted','Lost'].includes(x.status)&&((dateSortValue(leadDate(x))>0&&dateSortValue(leadDate(x))<dateSortValue(today()))||(x.followDate&&dateSortValue(x.followDate)<=dateSortValue(today()))));
  app.innerHTML=pageHead('Good day','Overview by lead received date. Select a date range to filter every dashboard section.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`
  <div class="panel dashboard-date-panel"><div class="panelhead"><h2>Dashboard date filter</h2><span class="register-count">${list.length} of ${leads.length} leads</span></div>
@@ -304,7 +310,7 @@ function dateSortValue(value){
 }
 function sortByLeadDate(items){return items.slice().sort((a,b)=>dateSortValue(leadDate(b))-dateSortValue(leadDate(a))||String(b.id||'').localeCompare(String(a.id||'')))}
 function displayDate(value){if(!value)return '—';const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:value}
-function table(items){return `<div class="tablewrap"><table><thead><tr><th>Client</th><th>Lead date</th><th>Phone</th><th>Source</th><th>Campaign</th><th>Status</th><th>Follow-up</th><th>Notes</th><th>Action</th></tr></thead><tbody>${items.map(x=>`<tr><td><span class="person">${esc(x.firstName)} ${esc(x.lastName)}</span></td><td>${esc(displayDate(leadDate(x)))}</td><td>${esc(x.phone)}</td><td>${esc(x.source)}</td><td>${esc(x.trackerData?.Campaign||'—')}</td><td><span class="pill ${String(x.status||"Unspecified").replace(/\s+/g,"-")}">${esc(x.status)}</span></td><td>${esc(displayDate(x.followDate))}</td><td class="notes-cell" title="${esc(x.notes||x.trackerData?.Notes||'')}">${esc(x.notes||x.trackerData?.Notes||'—')}</td><td><button class="btn small" onclick="editLead('${x.id}')">Edit</button> <button class="btn small" onclick="whatsapp('${encodeURIComponent(x.phone)}')">WhatsApp</button></td></tr>`).join('')||'<tr><td colspan="9" class="empty">No leads found. Add your first lead to get started.</td></tr>'}</tbody></table></div>`}
+function table(items){return `<div class="tablewrap"><table><thead><tr><th>Client</th><th>Lead date</th><th>Phone</th><th>Source</th><th>Campaign</th><th>Status</th><th>Sale amount (AED)</th><th>Follow-up</th><th>Notes</th><th>Action</th></tr></thead><tbody>${items.map(x=>`<tr><td><span class="person">${esc(x.firstName)} ${esc(x.lastName)}</span></td><td>${esc(displayDate(leadDate(x)))}</td><td>${esc(x.phone)}</td><td>${esc(x.source)}</td><td>${esc(x.trackerData?.Campaign||'—')}</td><td><span class="pill ${String(x.status||"Unspecified").replace(/\s+/g,"-")}">${esc(x.status)}</span></td><td>${x.status==='Converted'?(saleAmount(x)===null?'Not recorded':money(saleAmount(x))):'—'}</td><td>${esc(displayDate(x.followDate))}</td><td class="notes-cell" title="${esc(x.notes||x.trackerData?.Notes||'')}">${esc(x.notes||x.trackerData?.Notes||'—')}</td><td><button class="btn small" onclick="editLead('${x.id}')">Edit</button> <button class="btn small" onclick="whatsapp('${encodeURIComponent(x.phone)}')">WhatsApp</button></td></tr>`).join('')||'<tr><td colspan="10" class="empty">No leads found. Add your first lead to get started.</td></tr>'}</tbody></table></div>`}
 function orderedLeadRegister(items){
  const mode=document.getElementById('leadOrder')?.value||'newest';
  const sorted=sortByLeadDate(items);
