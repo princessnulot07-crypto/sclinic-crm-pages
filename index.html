@@ -75,7 +75,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   <div class="formitem"><label>Last name</label><input id="lastName"></div>
   <div class="formitem"><label>WhatsApp / phone *</label><input id="phone" required placeholder="+971 5X XXX XXXX"></div>
   <div class="formitem"><label>Lead date *</label><input id="leadDateInput" type="date" required></div>
-  <div class="formitem"><label>Lead source</label><select id="source"><option>Instagram</option><option>Facebook</option><option>NA</option><option>LinkedIn</option></select></div>
+  <div class="formitem"><label>Lead source</label><select id="source"><option>Instagram</option><option>Facebook</option><option>Walk-in</option><option>NA</option><option>LinkedIn</option></select></div>
   <div class="formitem"><label>Status</label><select id="status"><option>New</option><option>Called</option><option>Called No Answer</option><option>Interested</option><option>Follow-up Required</option><option>No response</option><option>Booked</option><option>Attended</option><option>No-show</option><option>Converted</option><option>Lost</option></select></div>
   <div class="formitem"><label>Next follow-up</label><input id="followDate" type="date"></div>
   <div class="formitem"><label>Consultation date</label><input id="consultDate" type="date"></div>
@@ -226,7 +226,7 @@ function displayLeadStatus(x){
  const sale=String(x.trackerData?.['Sale Converted']||'').trim().toLowerCase();
  return x.status==='Lost'?'Lost':(['yes','true','converted'].includes(sale)?'Converted':(x.status||'Unspecified'));
 }
-function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lead Source']||'').trim().toLowerCase();const campaign=String(x.trackerData?.Campaign||'').toLowerCase();if(original==='linkedin'||campaign==='linkedin')return 'LinkedIn';if(original==='instagram'||campaign.includes('instagram'))return 'Instagram';if(original==='facebook'||campaign.includes('facebook'))return 'Facebook';return 'NA';}
+function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lead Source']||'').trim().toLowerCase();const campaign=String(x.trackerData?.Campaign||'').toLowerCase();if(original==='linkedin'||campaign==='linkedin')return 'LinkedIn';if(original==='instagram'||campaign.includes('instagram'))return 'Instagram';if(original==='facebook'||campaign.includes('facebook'))return 'Facebook';if(/walk[ -]?in/.test(original)||/walk[ -]?in/.test(campaign))return 'Walk-in';return 'NA';}
 leads=leads.map(x=>({...x,source:normalizeSource(x)}));
 const getDue=()=>leads.filter(x=>x.followDate&&x.followDate<=today()&&!['Converted','Lost'].includes(x.status));
 function stats(){return {total:leads.length,new:leads.filter(x=>x.status==='New').length,booked:leads.filter(x=>x.status==='Booked').length,converted:leads.filter(x=>x.status==='Converted').length,revenue:leads.filter(x=>x.status==='Converted').reduce((s,x)=>s+(saleAmount(x)||0),0)}}
