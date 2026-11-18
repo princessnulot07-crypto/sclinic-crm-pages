@@ -214,14 +214,23 @@ function showLogin(message=''){
  document.getElementById('loginMessage').textContent=message;
 }
 async function loginCRM(e){
- e.preventDefault();const btn=document.getElementById('loginSubmit');btn.disabled=true;
- document.getElementById('loginMessage').textContent='Signing in…';
+ e.preventDefault();
+ const btn=document.getElementById('loginSubmit'),msg=document.getElementById('loginMessage');
+ btn.disabled=true;msg.textContent='Signing in…';
  const email=document.getElementById('loginEmail').value.trim();
  const password=document.getElementById('loginPassword').value;
- const {error}=await sb.auth.signInWithPassword({email,password});
- btn.disabled=false;
- if(error){document.getElementById('loginMessage').textContent=error.message;return}
- document.getElementById('loginPassword').value='';await setupCloud();
+ let timer;
+ try{
+  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Login timed out. Check your internet connection and try again.')),15000)});
+  const result=await Promise.race([sb.auth.signInWithPassword({email,password}),timeout]);
+  if(result.error){msg.textContent=result.error.message;return}
+  msg.textContent='Signed in. Loading CRM…';
+  document.getElementById('loginPassword').value='';
+  await Promise.race([setupCloud(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('CRM access check is taking too long. Please refresh and try again.')),20000))]);
+ }catch(err){
+  msg.textContent=err?.message||'Unable to sign in. Please try again.';
+  console.error('CRM login issue:',err);
+ }finally{clearTimeout(timer);btn.disabled=false}
 }
 async function logoutCRM(){if(cloudChannel)await sb.removeChannel(cloudChannel);cloudChannel=null;await sb.auth.signOut();showLogin('Signed out.');}
 async function resetCRMPassword(){const email=document.getElementById('loginEmail').value.trim();if(!email){document.getElementById('loginMessage').textContent='Enter your email first.';return}const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});document.getElementById('loginMessage').textContent=error?error.message:'If this account exists, a password reset email has been sent.'}
