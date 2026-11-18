@@ -408,7 +408,34 @@ function renderFollowups(){
  <div class="panel"><div class="panelhead"><h2>${titles[followupView]||titles.all} <span class="register-count">(${visible.length})</span></h2>${back}</div>
  <p class="followup-filter-note">${desc}</p>${visible.length?table(visible):'<div class="empty">No matching follow-up leads.</div>'}</div>`;
 }
-function renderConsultations(){let list=leads.filter(x=>isBookedLead(x)||x.consultDate).sort((a,b)=>String(a.consultDate||a.trackerData?.['Booking Date']||'').localeCompare(String(b.consultDate||b.trackerData?.['Booking Date']||'')));app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`<div class="stats"><div class="stat"><label>Booked</label><strong>${leads.filter(isBookedLead).length}</strong></div><div class="stat"><label>Attended</label><strong>${leads.filter(x=>x.status==='Attended').length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${leads.filter(x=>x.status==='No-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${stats().converted}</strong></div></div><div class="panel"><div class="panelhead"><h2>Booked clients and scheduled consultations</h2></div>${table(list)}</div>`}
+function consultationRangeControls(){
+ return '<div class="panel dashboard-date-panel"><div class="panelhead"><h2>Consultation reporting date filter</h2></div><div class="filters">'+
+ '<label class="formitem">From date (consultation)<input class="field" type="date" id="consultationFrom" value="'+consultationRange.from+'" onchange="applyConsultationDates()"></label>'+
+ '<label class="formitem">To date (consultation)<input class="field" type="date" id="consultationTo" value="'+consultationRange.to+'" onchange="applyConsultationDates()"></label>'+
+ '<button class="btn small" onclick="clearConsultationDates()">Clear dates / Show all</button></div></div>';
+}
+let consultationRange={from:'',to:''};
+function consultationFilteredLeads(){
+ const a=consultationRange.from?dateSortValue(consultationRange.from):0;
+ const b=consultationRange.to?dateSortValue(consultationRange.to):0;
+ return leads.filter(x=>{
+  if(!a&&!b)return true;
+  const d=dateSortValue(x.trackerData?.['Consultation Date']||x.consultDate);
+  return !!d&&(!a||d>=a)&&(!b||d<=b);
+ });
+}
+function applyConsultationDates(){
+ const from=document.getElementById('consultationFrom').value,to=document.getElementById('consultationTo').value;
+ if(from&&to&&from>to){alert('From date cannot be later than To date.');return;}
+ consultationRange={from,to};render();
+}
+function clearConsultationDates(){consultationRange={from:'',to:''};render();}
+function renderConsultations(){
+ const filtered=consultationFilteredLeads();
+ const list=filtered.filter(x=>isBookedLead(x)||x.consultDate||x.trackerData?.['Consultation Date']).sort((a,b)=>String(a.consultDate||a.trackerData?.['Booking Date']||'').localeCompare(String(b.consultDate||b.trackerData?.['Booking Date']||'')));
+ app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance. Attendance uses the same definition and consultation-date filter as Attended Consultations.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+consultationRangeControls()+
+ `<div class="stats"><div class="stat"><label>Booked</label><strong>${filtered.filter(isBookedLead).length}</strong></div><div class="stat"><label>Attended (including converted)</label><strong>${filtered.filter(attendedClient).length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${filtered.filter(x=>x.status==='No-show'||String(x.trackerData?.['Consultation Outcome']||'').trim().toLowerCase()==='no-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${filtered.filter(x=>attendedClient(x)&&attendedStage(x)==='Converted').length}</strong></div></div><div class="panel"><div class="panelhead"><h2>Booked clients and scheduled consultations</h2></div>${table(list)}</div>`;
+}
 
 /* Separate post-consultation workflow. Never changes lead status or CRM ID. */
 let attendedView='all';
@@ -441,13 +468,13 @@ async function updateAttendedStage(id,stage){
  }
 }
 function renderAttendedConsultations(){
- const all=leads.filter(attendedClient);
+ const all=consultationFilteredLeads().filter(attendedClient);
  const shown=attendedView==='all'?all:all.filter(x=>attendedStage(x)===attendedView);
  const tabs=[['all','All Attended'],...CONSULTATION_STAGES.map(x=>[x,x])];
  const buttons=tabs.map(([key,label])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${attendedView===key}" onclick="filterAttendedStage('${key}')">${esc(label)} (${key==='all'?all.length:all.filter(x=>attendedStage(x)===key).length})</button>`).join('');
  const rows=shown.map(x=>`<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.status||'—')}</td><td><select class="field consult-stage-select" data-stage="${esc(attendedStage(x))}" style="min-width:150px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select></td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`).join('');
  app.innerHTML=pageHead('Attended Consultations','Track the next step after a client attends a consultation. This status is separate from the main lead status.')+
- `<div class="panel"><div class="panelhead"><h2>Post-consultation status</h2></div><div style="padding:14px 18px">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Consultation date</th><th>Lead status</th><th>Consultation follow-up status</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No attended consultations in this view.</td></tr>'}</tbody></table></div></div>`;
+ consultationRangeControls()+`<div class="panel"><div class="panelhead"><h2>Post-consultation status</h2></div><div style="padding:14px 18px">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Consultation date</th><th>Lead status</th><th>Consultation follow-up status</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No attended consultations in this view.</td></tr>'}</tbody></table></div></div>`;
 }
 const TD=(x,k)=>String((x.trackerData&&x.trackerData[k])||'').trim();
 const DAYMS=86400000;
