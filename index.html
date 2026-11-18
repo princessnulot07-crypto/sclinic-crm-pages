@@ -358,7 +358,7 @@ function dateSortValue(value){
 }
 function sortByLeadDate(items){return items.slice().sort((a,b)=>dateSortValue(leadDate(b))-dateSortValue(leadDate(a))||String(b.id||'').localeCompare(String(a.id||'')))}
 function displayDate(value){if(!value)return '—';const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:value}
-function table(items){return `<div class="tablewrap"><table><thead><tr><th>Client</th><th>Lead date</th><th>Phone</th><th>Source</th><th>Campaign</th><th>Status</th><th>Sale amount (AED)</th><th>Follow-up</th><th>Notes</th><th>Action</th></tr></thead><tbody>${items.map(x=>`<tr><td><span class="person">${esc(x.firstName)} ${esc(x.lastName)}</span></td><td>${esc(displayDate(leadDate(x)))}</td><td>${esc(x.phone)}</td><td>${esc(x.source)}</td><td>${esc(x.trackerData?.Campaign||'—')}</td><td><span class="pill ${String(x.status||"Unspecified").replace(/\s+/g,"-")}">${esc(x.status)}</span></td><td>${x.status==='Converted'?(saleAmount(x)===null?'Not recorded':money(saleAmount(x))):'—'}</td><td>${esc(displayDate(x.followDate))}</td><td class="notes-cell" title="${esc(x.notes||x.trackerData?.Notes||'')}">${esc(x.notes||x.trackerData?.Notes||'—')}</td><td><button class="btn small" onclick="editLead('${x.id}')">Edit</button> <button class="btn small" onclick="whatsapp('${encodeURIComponent(x.phone)}')">WhatsApp</button></td></tr>`).join('')||'<tr><td colspan="10" class="empty">No leads found. Add your first lead to get started.</td></tr>'}</tbody></table></div>`}
+function table(items,showConsultation=false){return `<div class="tablewrap"><table><thead><tr><th>Client</th><th>Lead date</th><th>Phone</th><th>Source</th><th>Campaign</th><th>Status</th><th>Sale amount (AED)</th><th>Follow-up</th><th>Notes</th>${showConsultation?'<th>Consultation stage</th><th>Consultation notes</th>':''}<th>Action</th></tr></thead><tbody>${items.map(x=>`<tr><td><span class="person">${esc(x.firstName)} ${esc(x.lastName)}</span></td><td>${esc(displayDate(leadDate(x)))}</td><td>${esc(x.phone)}</td><td>${esc(x.source)}</td><td>${esc(x.trackerData?.Campaign||'—')}</td><td><span class="pill ${String(x.status||"Unspecified").replace(/\s+/g,"-")}">${esc(x.status)}</span></td><td>${x.status==='Converted'?(saleAmount(x)===null?'Not recorded':money(saleAmount(x))):'—'}</td><td>${esc(displayDate(x.followDate))}</td><td class="notes-cell" title="${esc(x.notes||x.trackerData?.Notes||'')}">${esc(x.notes||x.trackerData?.Notes||'—')}</td>${showConsultation?`<td>${isBookedLead(x)||attendedClient(x)?`<select class="field" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select>`:'—'}</td><td>${isBookedLead(x)||attendedClient(x)?`<textarea class="field" id="consult-notes-${esc(x.id)}" rows="2" placeholder="Consultation notes">${esc(x.consultationNotes||'')}</textarea><button class="btn small" id="consult-notes-save-${esc(x.id)}" onclick="saveConsultationNotes('${esc(x.id)}')">Save notes</button>`:'—'}</td>`:''}<td><button class="btn small" onclick="editLead('${x.id}')">Edit</button> <button class="btn small" onclick="whatsapp('${encodeURIComponent(x.phone)}')">WhatsApp</button></td></tr>`).join('')||'<tr><td colspan="${showConsultation?12:10}" class="empty">No leads found. Add your first lead to get started.</td></tr>'}</tbody></table></div>`}
 function orderedLeadRegister(items){
  const mode=document.getElementById('leadOrder')?.value||'newest';
  const sorted=sortByLeadDate(items);
@@ -375,6 +375,7 @@ function renderLeads(){
  <label class="lead-date-filter">To <input class="field" type="date" id="leadTo" onchange="filterLeads()" aria-label="Lead date to"></label>
  <select class="field" id="leadOrder" onchange="filterLeads()" aria-label="Sort lead dates"><option value="newest">Lead date: Newest first ↓</option><option value="oldest">Lead date: Oldest first ↑</option></select>
  <select class="field" id="statusFilter" onchange="filterLeads()" aria-label="Filter by status"><option value="">All statuses</option>${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost','Unspecified'].map(x=>`<option>${x}</option>`).join('')}</select>
+ <select class="field" id="consultationStageFilter" onchange="filterLeads()" aria-label="Filter by consultation stage"><option value="">All consultation stages</option><option value="booked">All Booked</option><option value="attended">All Attended</option><option value="no-show">No-show</option>${CONSULTATION_STAGES.map(stage=>`<option value="${esc(stage)}">${esc(stage)}</option>`).join('')}</select>
  <select class="field" id="sourceFilter" onchange="filterLeads()" aria-label="Filter by source"><option value="">All sources</option>${sources.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
  <button type="button" class="btn small" onclick="resetLeadFilters()">Clear filters</button></div>
  <div id="leadTable"></div></div>`;
@@ -382,16 +383,18 @@ function renderLeads(){
 }
 function resetLeadFilters(){
  bookedDashboardView=false;
- ['search','statusFilter','sourceFilter','leadFrom','leadTo'].forEach(id=>document.getElementById(id).value='');
+ ['search','statusFilter','consultationStageFilter','sourceFilter','leadFrom','leadTo'].forEach(id=>document.getElementById(id).value='');
  document.getElementById('leadOrder').value='newest';filterLeads();
 }
 function filterLeads(){
  const q=document.getElementById('search').value.toLowerCase().trim(),st=document.getElementById('statusFilter').value,so=document.getElementById('sourceFilter').value;
  const from=document.getElementById('leadFrom').value, to=document.getElementById('leadTo').value;
+ const cs=document.getElementById('consultationStageFilter')?.value||'';
+ const matchesConsultation=x=>!cs||(cs==='booked'?isBookedLead(x):cs==='attended'?attendedClient(x):cs==='no-show'?(x.status==='No-show'||String(x.trackerData?.['Consultation Outcome']||'').toLowerCase()==='no-show'):attendedStage(x)===cs&&(cs!=='Not Yet Attended'||isBookedLead(x)));
  const fromMs=from?dateSortValue(from):0,toMs=to?dateSortValue(to):0;
- const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!bookedDashboardView||isBookedLead(x))&&(`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!st||x.status===st)&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
+ const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!bookedDashboardView||isBookedLead(x))&&matchesConsultation(x)&&(`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!st||x.status===st)&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
  document.getElementById('leadCount').textContent=`${bookedDashboardView?'Booked clients · ':''}Showing ${list.length} of ${leads.length} leads`;
- document.getElementById('leadTable').innerHTML=table(orderedLeadRegister(list));
+ document.getElementById('leadTable').innerHTML=table(orderedLeadRegister(list),true);
 }
 let followupView='all';
 function chooseFollowupView(kind){followupView=kind;renderFollowups()}
@@ -466,7 +469,7 @@ async function updateAttendedStage(id,stage){
  if(select){select.disabled=true;select.dataset.stage=stage;}
  try{
   await saveCloudLead(x);
-  renderAttendedConsultations();
+  if(page==='leads')filterLeads();else renderAttendedConsultations();
  }catch(err){
   x.consultationStage=previous;
   renderAttendedConsultations();
@@ -481,7 +484,7 @@ async function saveConsultationNotes(id){
  x.consultationNotes=field.value;
  const btn=document.getElementById('consult-notes-save-'+id);
  if(btn){btn.disabled=true;btn.textContent='Saving…';}
- try{await saveCloudLead(x);renderAttendedConsultations();}
+ try{await saveCloudLead(x);if(page==='leads')filterLeads();else renderAttendedConsultations();}
  catch(err){x.consultationNotes=previous;if(btn){btn.disabled=false;btn.textContent='Save notes';}alert('Could not save consultation notes. Please try again.');}
 }
 function renderAttendedConsultations(){
