@@ -478,8 +478,9 @@ function renderAttendedConsultations(){
  const booked=filtered.filter(isBookedLead);
  const all=filtered.filter(attendedClient);
  const noShows=filtered.filter(x=>x.status==='No-show'||String(x.trackerData?.['Consultation Outcome']||'').trim().toLowerCase()==='no-show');
- const tabs=[['booked','All Booked',booked.length],['all','All Attended',all.length],['noShows','No-show',noShows.length],...CONSULTATION_STAGES.map(x=>[x,x,filtered.filter(y=>attendedStage(y)===x).length])];
- const shown=attendedView==='booked'?booked:attendedView==='noShows'?noShows:attendedView==='all'?all:filtered.filter(x=>attendedStage(x)===attendedView);
+ const stageLeads=stage=>filtered.filter(x=>attendedStage(x)===stage&&(stage!=='Not Yet Attended'||isBookedLead(x)));
+ const tabs=[['booked','All Booked',booked.length],['all','All Attended',all.length],['noShows','No-show',noShows.length],...CONSULTATION_STAGES.map(x=>[x,x,stageLeads(x).length])];
+ const shown=attendedView==='booked'?booked:attendedView==='noShows'?noShows:attendedView==='all'?all:stageLeads(attendedView);
  const buttons=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${attendedView===key}" onclick="filterAttendedStage('${key}')">${esc(label)} (${count})</button>`).join('');
  const rows=shown.map(x=>{
   const statusCell=`<select class="field consult-stage-select" data-stage="${esc(attendedStage(x))}" style="min-width:185px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select>`;
