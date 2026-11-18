@@ -397,7 +397,7 @@ let followupView='all';
 function chooseFollowupView(kind){followupView=kind;renderFollowups()}
 function followupCard(kind,label,count){
  const active=followupView===kind;
- return `<div class="stat ${active?'selected':''}" role="button" tabindex="0" aria-pressed="${active}" aria-label="Show ${esc(label)} leads" onclick="chooseFollowupView('${kind}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseFollowupView('${kind}')}" title="Click to view matching leads"><label>${esc(label)}</label><strong>${count}</strong><small>View matching leads →</small></div>`;
+ return `<div class="stat"><label>${esc(label)}</label><strong>${count}</strong></div>`;
 }
 function renderFollowups(){
  const list=followupCandidates();
