@@ -518,19 +518,20 @@ function perfDate(x,key,fallback=''){return dateSortValue(TD(x,key)||fallback)}
 function perfInMonth(value,month){const d=dateSortValue(value);return d>=dateSortValue(month+'-01')&&d<dateSortValue(nextPerfMonth(month)+'-01')}
 function nextPerfMonth(month){const [y,m]=month.split('-').map(Number);return m===12?(y+1)+'-01':y+'-'+String(m+1).padStart(2,'0')}
 function perfOutcome(x){return TD(x,'Consultation Outcome').toLowerCase()}
-function perfBooked(x){return !!(TD(x,'Booking Date')||TD(x,'Consultation Date')||x.consultDate)||['Booked','Attended','No-show','Converted'].includes(x.status)}
-function perfAttended(x){return perfOutcome(x)==='attended'||['Attended','Converted'].includes(x.status)||x.consultationStage==='Converted'}
-function perfConverted(x){return TD(x,'Sale Converted').toLowerCase()==='yes'||x.status==='Converted'}
-function perfMoney(x){const v=String(TD(x,'Sale Value (AED)')||x.value||'').replace(/[^0-9.-]/g,'');return Number(v)||0}
+function perfBooked(x){return !!TD(x,'Booking Date')}
+function perfAttended(x){return perfOutcome(x)==='attended'}
+function perfConverted(x){return TD(x,'Sale Converted').toLowerCase()==='yes'}
+function perfMoney(x){const v=String(TD(x,'Sale Value (AED)')||'').replace(/[^0-9.-]/g,'');return Number(v)||0}
 function perfSource(x){const raw=String(TD(x,'Lead Source')||x.source||'Other').trim();return raw||'Other'}
+function perfRange(value){const d=dateSortValue(value),a=dateSortValue(document.getElementById('performanceFrom')?.value),b=dateSortValue(document.getElementById('performanceTo')?.value);return !!(d&&a&&b&&d>=a&&d<=b)}
 function renderReports(){
- const defaultMonth=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
- const current=document.getElementById('performanceMonth')?.value||defaultMonth;
- app.innerHTML=pageHead('Performance','Lead Tracker-based performance overview. Figures reflect the latest records synchronized to the CRM.',`<button type="button" class="btn" onclick="exportCSV()">Export CSV</button>`)+
- `<div class="panel"><div class="panelhead"><h2>Reporting month</h2><label>Month <input type="month" class="field" id="performanceMonth" value="${current}" onchange="updatePerformance()"></label></div><div id="performanceResults"></div></div>`;
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const first=today.slice(0,7)+'-01';
+ const last=new Date(Date.UTC(Number(today.slice(0,4)),Number(today.slice(5,7)),0)).toISOString().slice(0,10);
+ app.innerHTML=pageHead('Performance','Based on the Lead Tracker performance formulas.',`<button type="button" class="btn" onclick="exportCSV()">Export CSV</button>`)+
+ `<div class="panel"><div class="panelhead"><h2>Filter dates</h2><div style="display:flex;gap:12px;flex-wrap:wrap"><label>From <input type="date" class="field" id="performanceFrom" value="${first}" onchange="performanceSelection=null;updatePerformance()"></label><label>To <input type="date" class="field" id="performanceTo" value="${last}" onchange="performanceSelection=null;updatePerformance()"></label></div></div><div id="performanceResults"></div></div>`;
  updatePerformance();
 }
-
 let performanceSelection=null;
 function choosePerformance(kind,source=''){
  performanceSelection={kind,source};
@@ -541,9 +542,9 @@ function showPerformanceDetails(){
  const month=document.getElementById('performanceMonth')?.value;
  if(!el||!month||!performanceSelection)return;
  const {kind,source}=performanceSelection;
- const cohort=leads.filter(x=>perfInMonth(leadDate(x),month));
- const scheduled=leads.filter(x=>perfInMonth(TD(x,'Consultation Date')||x.consultDate,month));
- const closed=leads.filter(x=>perfInMonth(TD(x,'Sale Date'),month)&&perfConverted(x));
+ const cohort=leads.filter(x=>perfRange(TD(x,'Date Received')));
+ const scheduled=leads.filter(x=>perfRange(TD(x,'Consultation Date')));
+ const closed=leads.filter(x=>perfRange(TD(x,'Sale Date'))&&perfConverted(x));
  const groups={leads:cohort,booked:cohort.filter(perfBooked),attended:cohort.filter(perfAttended),converted:cohort.filter(perfConverted),scheduled,actualAttended:scheduled.filter(perfAttended),noShows:scheduled.filter(x=>perfOutcome(x)==='no-show'||x.status==='No-show'),closed};
  const aliases={cohortValue:'converted',bookingRate:'booked',saleRate:'converted',attendanceRate:'actualAttended',closedValue:'closed'};
  const items=(groups[aliases[kind]||kind]||[]).filter(x=>!source||perfSource(x)===source);
@@ -553,13 +554,13 @@ function showPerformanceDetails(){
 }
 
 function updatePerformance(){
- const month=document.getElementById('performanceMonth')?.value;
- if(!month)return;
- const cohort=leads.filter(x=>perfInMonth(leadDate(x),month));
- const scheduled=leads.filter(x=>perfInMonth(TD(x,'Consultation Date')||x.consultDate,month));
- const closed=leads.filter(x=>perfInMonth(TD(x,'Sale Date'),month)&&perfConverted(x));
+ const from=document.getElementById('performanceFrom')?.value,to=document.getElementById('performanceTo')?.value;
+ if(!from||!to||dateSortValue(from)>dateSortValue(to)){document.getElementById('performanceResults').innerHTML='<div class="notice">Select a valid From and To date.</div>';return}
+ const cohort=leads.filter(x=>perfRange(TD(x,'Date Received')));
+ const scheduled=leads.filter(x=>perfRange(TD(x,'Consultation Date')));
+ const closed=leads.filter(x=>perfRange(TD(x,'Sale Date'))&&perfConverted(x));
  const booked=cohort.filter(perfBooked),attended=cohort.filter(perfAttended),converted=cohort.filter(perfConverted);
- const actualAttended=scheduled.filter(perfAttended),noShows=scheduled.filter(x=>perfOutcome(x)==='no-show'||x.status==='No-show');
+ const actualAttended=scheduled.filter(perfAttended),noShows=scheduled.filter(x=>perfOutcome(x)==='no-show');
  const percent=(n,d)=>d?(100*n/d).toFixed(1)+'%':'0.0%';
  const tile=(name,value,detail,kind)=>`<div class="stat" role="button" tabindex="0" style="cursor:pointer" onclick="choosePerformance(&quot;${kind}&quot;)" onkeydown="if(event.key===&quot;Enter&quot;||event.key===&quot; &quot;){event.preventDefault();choosePerformance(&quot;${kind}&quot;)}" title="Click to see matching clients"><label>${name}</label><strong>${value}</strong><small>${detail} · View clients →</small></div>`;
  const tiles=[
@@ -567,7 +568,7 @@ function updatePerformance(){
  ['Consultations booked (cohort)',booked.length,'Leads received this month', 'booked'],
  ['Consultations attended (cohort)',attended.length,'Leads received this month', 'attended'],
  ['Sales converted (cohort)',converted.length,'Leads received this month', 'converted'],
- ['Cohort sales value',money(converted.reduce((s,x)=>s+perfMoney(x),0)),'AED · received this month', 'cohortValue'],
+ ['Cohort sales value',money(cohort.reduce((s,x)=>s+perfMoney(x),0)),'AED · received this month', 'cohortValue'],
  ['Booking rate',percent(booked.length,cohort.length),'Booked / leads received', 'bookingRate'],
  ['Lead-to-sale rate',percent(converted.length,cohort.length),'Converted / leads received', 'saleRate'],
  ['Consultations scheduled',scheduled.length,'Consultation date in month', 'scheduled'],
@@ -575,13 +576,13 @@ function updatePerformance(){
  ['No-shows',noShows.length,'Consultation date in month', 'noShows'],
  ['Attendance rate',percent(actualAttended.length,scheduled.length),'Attended / scheduled', 'attendanceRate'],
  ['Sales closed',closed.length,'Sale date in month', 'closed'],
- ['Sales value closed',money(closed.reduce((s,x)=>s+perfMoney(x),0)),'AED · sale date in month', 'closedValue']
+ ['Sales value closed',money(leads.filter(x=>perfRange(TD(x,'Sale Date'))).reduce((s,x)=>s+perfMoney(x),0)),'AED · sale date in month', 'closedValue']
  ];
  const sources=[...new Set(cohort.map(perfSource))].sort((a,b)=>a.localeCompare(b));
  const rows=sources.map(source=>{
  const group=cohort.filter(x=>perfSource(x)===source);
  const b=group.filter(perfBooked).length,a=group.filter(perfAttended).length,cv=group.filter(perfConverted);
- return `<tr style="cursor:pointer" title="Click to view source leads" onclick="choosePerformance(&quot;leads&quot;,decodeURIComponent(&quot;${encodeURIComponent(source)}&quot;))"><td>${esc(source)} ↗</td><td>${group.length}</td><td>${b}</td><td>${a}</td><td>${cv.length}</td><td>${money(cv.reduce((s,x)=>s+perfMoney(x),0))}</td></tr>`;
+ return `<tr style="cursor:pointer" title="Click to view source leads" onclick="choosePerformance(&quot;leads&quot;,decodeURIComponent(&quot;${encodeURIComponent(source)}&quot;))"><td>${esc(source)} ↗</td><td>${group.length}</td><td>${b}</td><td>${a}</td><td>${cv.length}</td><td>${money(group.reduce((s,x)=>s+perfMoney(x),0))}</td></tr>`;
  }).join('');
  document.getElementById('performanceResults').innerHTML=`<div class="stats" style="padding:16px">${tiles.map(t=>tile(...t)).join('')}</div>
  <div class="panelhead"><h2>Lead source performance — acquisition cohort</h2></div>
