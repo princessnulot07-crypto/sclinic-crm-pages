@@ -547,10 +547,10 @@ function showPerformanceDetails(){
  const closed=leads.filter(x=>perfRange(perfSaleDate(x))&&perfConverted(x));
  const reactivated=leads.filter(x=>perfRange(TD(x,'Last Contact Date'))&&dateSortValue(TD(x,'Date Received'))>0&&dateSortValue(TD(x,'Date Received'))<dateSortValue(document.getElementById('performanceFrom').value));
  const salesValue=leads.filter(x=>perfRange(perfSaleDate(x))&&perfMoney(x)!==0);
- const groups={undatedSales:leads.filter(x=>perfMoney(x)>0&&!dateSortValue(perfSaleDate(x))),saleCohort:cohort.filter(perfConverted),salesValue,all:leads,reactivated,activity:leads.filter(x=>perfRange(TD(x,'Last Contact Date'))||perfRange(TD(x,'Consultation Date'))||perfRange(perfSaleDate(x))),leads:cohort,booked:cohort.filter(perfBooked),attended:cohort.filter(perfAttended),converted:closed,scheduled,actualAttended:scheduled.filter(perfAttended),noShows:scheduled.filter(x=>perfOutcome(x)==='no-show'||x.status==='No-show'),closed};
+ const groups={undatedSales:leads.filter(x=>perfMoney(x)>0&&!dateSortValue(perfSaleDate(x))),saleCohort:cohort.filter(perfConverted),salesValue,all:leads.filter(x=>!!dateSortValue(TD(x,'Date Received'))),reactivated,activity:leads.filter(x=>perfRange(TD(x,'Last Contact Date'))||perfRange(TD(x,'Consultation Date'))||perfRange(perfSaleDate(x))),leads:cohort,booked:cohort.filter(perfBooked),attended:cohort.filter(perfAttended),converted:closed,scheduled,actualAttended:scheduled.filter(perfAttended),noShows:scheduled.filter(x=>perfOutcome(x)==='no-show'||x.status==='No-show'),closed};
  const aliases={cohortValue:'salesValue',bookingRate:'booked',saleRate:'saleCohort',attendanceRate:'actualAttended',closedValue:'closed'};
  const items=(groups[aliases[kind]||kind]||[]).filter(x=>!source||perfSource(x)===source);
- const titles={undatedSales:'Sales missing Sale Date — needs review',all:'All CRM leads',reactivated:'Older leads contacted this period',activity:'Leads active this period',leads:'Leads received',booked:'Consultations booked',attended:'Consultations attended (cohort)',converted:'Sales converted',cohortValue:'Total sales value',bookingRate:'Booking rate',saleRate:'Lead-to-sale rate',scheduled:'Consultations scheduled',actualAttended:'Consultations attended',noShows:'No-shows',attendanceRate:'Attendance rate',closed:'Sales closed',closedValue:'Sales value closed'};
+ const titles={undatedSales:'Sales missing Sale Date — needs review',all:'Leads with Date Received',reactivated:'Older leads contacted this period',activity:'Leads active this period',leads:'Leads received',booked:'Consultations booked',attended:'Consultations attended (cohort)',converted:'Sales converted',cohortValue:'Total sales value',bookingRate:'Booking rate',saleRate:'Lead-to-sale rate',scheduled:'Consultations scheduled',actualAttended:'Consultations attended',noShows:'No-shows',attendanceRate:'Attendance rate',closed:'Sales closed',closedValue:'Sales value closed'};
  el.innerHTML='<div class="panelhead"><h2>'+esc(titles[kind]||'Performance')+(source?' — '+esc(source):'')+' ('+items.length+')</h2><button type="button" class="btn small" onclick="performanceSelection=null;document.getElementById(&quot;performanceDetails&quot;).innerHTML=&quot;&quot;">Close</button></div>'+(items.length?table(items):'<div class="empty">No matching clients.</div>');
  el.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -559,7 +559,7 @@ function updatePerformance(){
  const from=document.getElementById('performanceFrom')?.value,to=document.getElementById('performanceTo')?.value;
  if(!from||!to||dateSortValue(from)>dateSortValue(to)){document.getElementById('performanceResults').innerHTML='<div class="notice">Select a valid From and To date.</div>';return}
  const cohort=leads.filter(x=>perfRange(TD(x,'Date Received')));
- const totalLeads=leads.length;
+ const totalLeads=leads.filter(x=>!!dateSortValue(TD(x,'Date Received'))).length;
  const undatedSales=leads.filter(x=>perfMoney(x)>0&&!dateSortValue(perfSaleDate(x)));
  const reactivated=leads.filter(x=>perfRange(TD(x,'Last Contact Date'))&&dateSortValue(TD(x,'Date Received'))>0&&dateSortValue(TD(x,'Date Received'))<dateSortValue(from));
  const activity=leads.filter(x=>perfRange(TD(x,'Last Contact Date'))||perfRange(TD(x,'Consultation Date'))||perfRange(perfSaleDate(x)));
@@ -570,7 +570,7 @@ function updatePerformance(){
  const percent=(n,d)=>d?(100*n/d).toFixed(1)+'%':'0.0%';
  const tile=(name,value,detail,kind)=>`<div class="stat" role="button" tabindex="0" style="cursor:pointer" onclick="choosePerformance(&quot;${kind}&quot;)" onkeydown="if(event.key===&quot;Enter&quot;||event.key===&quot; &quot;){event.preventDefault();choosePerformance(&quot;${kind}&quot;)}" title="Click to see matching clients"><label>${name}</label><strong>${value}</strong><small>${detail} · View clients →</small></div>`;
  const tiles=[
- ['All CRM leads',totalLeads,'Includes leads received before this period','all'],
+ ['Leads with Date Received',totalLeads,'All dated leads; excludes records missing Date Received','all'],
  ['Older leads contacted this period',reactivated.length,'Received before From date; last contact in range','reactivated'],
  ['Leads active this period',activity.length,'Contact, consultation, or sale date in range','activity'],
  ['Leads received',cohort.length,'Lead received date', 'leads'],
