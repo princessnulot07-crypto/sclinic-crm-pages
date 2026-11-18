@@ -65,6 +65,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .consult-stage-tab[data-stage="booked"]{background:#e5f1fb;color:#245c9b;border-color:#b5d2ee}
 .consult-stage-tab[data-stage="noShows"]{background:#fce7e7;color:#a43c3c;border-color:#efb7b7}
 
+.consult-stage-select[data-stage="Lost"],.consult-stage-tab[data-stage="Lost"]{background:#ececef;color:#5d5d67;border-color:#d0d0d7}
+
 /* All Leads: accessible status badges, without changing lead data */
 .pill{font-weight:700;border:1px solid transparent;white-space:nowrap}
 .pill.New,.pill.Unspecified{background:#f0eee9;color:#625d55;border-color:#ded9d1}
@@ -444,7 +446,7 @@ function renderConsultations(){
 
 /* Separate post-consultation workflow. Never changes lead status or CRM ID. */
 let attendedView='booked';
-const CONSULTATION_STAGES=['Not Yet Attended','Follow Up','Waiting to Book','Interested Book First Session','Converted'];
+const CONSULTATION_STAGES=['Not Yet Attended','Follow Up','Waiting to Book','Interested Book First Session','Converted','Lost'];
 function attendedClient(x){
  const t=x.trackerData||{};
  const outcome=String(t['Consultation Outcome']||'').trim().toLowerCase();
