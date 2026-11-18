@@ -407,11 +407,11 @@ function filterLeads(){
  const from=document.getElementById('leadFrom').value, to=document.getElementById('leadTo').value;
 
  const fromMs=from?dateSortValue(from):0,toMs=to?dateSortValue(to):0;
- const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!bookedDashboardView||isBookedLead(x))&&(`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!st||x.status===st)&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
+ const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!bookedDashboardView||isBookedLead(x))&&(`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
  const leadStatuses=['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'];
  const tabs=[['allLeads','All Leads',list.length],...leadStatuses.map(status=>[status,status,list.filter(x=>x.status===status).length])];
- document.getElementById('leadStageTabs').innerHTML=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab lead-status-tab" data-lead-status="${esc(key.replace(/\\s+/g,'-'))}" aria-pressed="${leadStageView===key}" onclick="chooseLeadStage('${key}')">${esc(label)} (${count})</button>`).join('');
- const shown=list;
+ document.getElementById('leadStageTabs').innerHTML=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab lead-status-tab" data-lead-status="${esc(key.replace(/\s+/g,'-'))}" aria-pressed="${leadStageView===key}" onclick="chooseLeadStage('${key}')">${esc(label)} (${count})</button>`).join('');
+ const shown=st?list.filter(x=>x.status===st):list;
  document.getElementById('leadCount').textContent=`${bookedDashboardView?'Booked clients · ':''}Showing ${shown.length} of ${leads.length} leads`;
  document.getElementById('leadTable').innerHTML=table(orderedLeadRegister(shown),true);
 }
