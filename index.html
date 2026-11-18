@@ -184,7 +184,7 @@ sb.auth.onAuthStateChange((event)=>{
 }
 if(event==='SIGNED_IN' && passwordRecoveryMode)showPasswordRecovery();
 });
-let leads=[], activeUser=null, cloudReady=false, savePending=false, cloudChannel=null;
+let leads=[], activeUser=null, crmRole=null, cloudReady=false, savePending=false, cloudChannel=null;
 const statusEl=()=>document.getElementById('saveStatus');
 function saveIndicator(message,error=false){const el=statusEl();if(el){el.textContent=message;el.classList.toggle('error',error)}}
 function validBackup(value){return Array.isArray(value)&&value.every(x=>x&&typeof x==='object'&&typeof x.id==='string'&&typeof x.firstName==='string')}
