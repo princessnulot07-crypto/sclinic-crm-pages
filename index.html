@@ -59,6 +59,12 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 
 
 
+
+.consult-stage-select[data-stage="Not Yet Attended"],.consult-stage-tab[data-stage="Not Yet Attended"]{background:#fce7e7;color:#a43c3c;border-color:#efb7b7}
+.consult-stage-select[data-stage="Interested Book First Session"],.consult-stage-tab[data-stage="Interested Book First Session"]{background:#f2e7fc;color:#70439d;border-color:#d7b8ee}
+.consult-stage-tab[data-stage="booked"]{background:#e5f1fb;color:#245c9b;border-color:#b5d2ee}
+.consult-stage-tab[data-stage="noShows"]{background:#fce7e7;color:#a43c3c;border-color:#efb7b7}
+
 /* All Leads: accessible status badges, without changing lead data */
 .pill{font-weight:700;border:1px solid transparent;white-space:nowrap}
 .pill.New,.pill.Unspecified{background:#f0eee9;color:#625d55;border-color:#ded9d1}
@@ -438,16 +444,16 @@ function renderConsultations(){
 
 /* Separate post-consultation workflow. Never changes lead status or CRM ID. */
 let attendedView='booked';
-const CONSULTATION_STAGES=['Follow Up','Waiting to Book','Converted'];
+const CONSULTATION_STAGES=['Not Yet Attended','Follow Up','Waiting to Book','Interested Book First Session','Converted'];
 function attendedClient(x){
  const t=x.trackerData||{};
  const outcome=String(t['Consultation Outcome']||'').trim().toLowerCase();
  return x.status==='Attended'||x.status==='Converted'||outcome==='attended'||
-   !!x.consultationStage;
+   (!!x.consultationStage&&x.consultationStage!=='Not Yet Attended');
 }
 function attendedStage(x){
  return CONSULTATION_STAGES.includes(x.consultationStage)?x.consultationStage:
-   x.status==='Converted'?'Converted':'Follow Up';
+   x.status==='Converted'?'Converted':attendedClient(x)?'Follow Up':'Not Yet Attended';
 }
 function filterAttendedStage(stage){attendedView=stage;renderAttendedConsultations()}
 async function updateAttendedStage(id,stage){
@@ -471,11 +477,11 @@ function renderAttendedConsultations(){
  const booked=filtered.filter(isBookedLead);
  const all=filtered.filter(attendedClient);
  const noShows=filtered.filter(x=>x.status==='No-show'||String(x.trackerData?.['Consultation Outcome']||'').trim().toLowerCase()==='no-show');
- const tabs=[['booked','All Booked',booked.length],['all','All Attended',all.length],['noShows','No-show',noShows.length],...CONSULTATION_STAGES.map(x=>[x,x,all.filter(y=>attendedStage(y)===x).length])];
- const shown=attendedView==='booked'?booked:attendedView==='noShows'?noShows:attendedView==='all'?all:all.filter(x=>attendedStage(x)===attendedView);
+ const tabs=[['booked','All Booked',booked.length],['all','All Attended',all.length],['noShows','No-show',noShows.length],...CONSULTATION_STAGES.map(x=>[x,x,filtered.filter(y=>attendedStage(y)===x).length])];
+ const shown=attendedView==='booked'?booked:attendedView==='noShows'?noShows:attendedView==='all'?all:filtered.filter(x=>attendedStage(x)===attendedView);
  const buttons=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${attendedView===key}" onclick="filterAttendedStage('${key}')">${esc(label)} (${count})</button>`).join('');
  const rows=shown.map(x=>{
-  const statusCell=attendedClient(x)?`<select class="field consult-stage-select" style="min-width:150px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select>`:'<span class="sub">Not yet attended</span>';
+  const statusCell=`<select class="field consult-stage-select" data-stage="${esc(attendedStage(x))}" style="min-width:185px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select>`;
   return `<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.trackerData?.['Booking Date']||''))}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.trackerData?.['Consultation Outcome']||x.status||'—')}</td><td>${statusCell}</td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`;
  }).join('');
  app.innerHTML=pageHead('Attended Consultations','All booked clients, attendance, no-shows, and post-consultation follow-ups in one place.')+
