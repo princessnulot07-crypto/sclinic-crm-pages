@@ -104,7 +104,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
  <nav class="nav">
   <button class="active" data-page="dashboard"><span>⌂</span><span class="navlabel">Dashboard</span></button>
   <button data-page="leads"><span>◎</span><span class="navlabel">All Leads</span></button>
-  <button data-page="followups"><span>◷</span><span class="navlabel">Follow-ups</span></button>
   <button data-page="attended"><span>✓</span><span class="navlabel">Attended Consultations</span></button>
   <button data-page="reports"><span>▤</span><span class="navlabel">Performance</span></button>
   <button data-page="settings"><span>⚙</span><span class="navlabel">Settings</span></button>
@@ -289,12 +288,12 @@ function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lea
 leads=leads.map(x=>({...x,source:normalizeSource(x)}));
 const getDue=()=>leads.filter(x=>x.followDate&&x.followDate<=today()&&!['Converted','Lost'].includes(x.status));
 function stats(){return {total:leads.length,new:leads.filter(x=>x.status==='New').length,booked:leads.filter(x=>x.status==='Booked').length,converted:leads.filter(x=>x.status==='Converted').length,revenue:leads.filter(x=>(x.status==='Converted'||String(x.trackerData?.['Sale Converted']||'').trim().toLowerCase()==='yes')).reduce((s,x)=>s+(saleAmount(x)||0),0)}}
-function setPage(p){page=p;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
+function setPage(p){if(p==='followups')p='leads';page=p;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
 function pageHead(title,desc,action=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div>${action}</div>`}
 function render(){
- document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',followups:'Follow-ups',consultations:'Consultations',attended:'Attended Consultations',reports:'Performance',settings:'Settings'})[page];
- if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='followups')renderFollowups();if(page==='consultations'){page='attended';renderAttendedConsultations();}if(page==='attended')renderAttendedConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
+ document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',consultations:'Consultations',attended:'Attended Consultations',reports:'Performance',settings:'Settings'})[page];
+ if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='consultations'){page='attended';renderAttendedConsultations();}if(page==='attended')renderAttendedConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
 }
 // Dashboard date range uses the date each lead was received, inclusive of both endpoints.
 let dashboardRange={from:'',to:''};
@@ -341,7 +340,6 @@ function openDashboardMetric(kind){
 function renderDashboard(){
  const list=dashboardFilteredLeads();
  const s={total:list.length,new:list.filter(x=>x.status==='New').length,booked:list.filter(isBookedLead).length,converted:list.filter(x=>x.status==='Converted').length,lost:list.filter(x=>x.status==='Lost').length,revenue:list.filter(x=>(x.status==='Converted'||String(x.trackerData?.['Sale Converted']||'').trim().toLowerCase()==='yes')).reduce((n,x)=>n+(saleAmount(x)||0),0)};
- const due=followupCandidates(list).filter(x=>!['Booked','Attended','Converted','Lost'].includes(x.status)&&((dateSortValue(leadDate(x))>0&&dateSortValue(leadDate(x))<dateSortValue(today()))||(x.followDate&&dateSortValue(x.followDate)<=dateSortValue(today()))));
  app.innerHTML=pageHead('Good day','Overview by lead received date. Select a date range to filter every dashboard section.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`
  <div class="panel dashboard-date-panel"><div class="panelhead"><h2>Dashboard date filter</h2><span class="register-count">${list.length} of ${leads.length} leads</span></div>
  <div class="filters"><label class="formitem">From date (lead received)<input class="field" type="date" id="dashboardFrom" value="${dashboardRange.from}" onchange="applyDashboardDates()"></label>
@@ -354,9 +352,7 @@ function renderDashboard(){
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View consultations booked in All Leads" onclick="openDashboardMetric('booked')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('booked')}"><label>Consultations booked</label><strong>${s.booked}</strong><small>Click to view booked clients →</small></div>
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View lost leads in All Leads" onclick="openDashboardMetric('lost')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('lost')}"><label>Lost leads</label><strong>${s.lost}</strong><small>Click to view lost lead table →</small></div>
  <div class="stat stat-link" role="button" tabindex="0" aria-label="View converted clients in All Leads" onclick="openDashboardMetric('converted')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardMetric('converted')}"><label>Converted revenue</label><strong style="font-size:22px">${money(s.revenue)}</strong><small>${s.converted} converted lead(s) · View clients →</small></div></div>
- <div class="grid2"><div class="panel"><div class="panelhead"><h2>Follow-ups requiring attention</h2><button class="btn small" onclick="setPage('followups')">View all</button></div>
- <div class="quicklist">${due.map(x=>`<div class="quickrow"><div><strong>${esc(x.firstName)} ${esc(x.lastName)}</strong><span class="sub">${esc(x.phone)} · ${esc(x.status)}</span></div><span class="pill No-response">${esc(displayDate(x.followDate||leadDate(x)))}</span></div>`).join('')||'<div class="empty">No follow-ups requiring attention in this date range.</div>'}</div></div>
- <div class="panel"><div class="panelhead"><h2>Lead status overview</h2></div><div class="quicklist">${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'].map(st=>`<div class="quickrow"><span>${st}</span><strong>${list.filter(x=>x.status===st).length}</strong></div>`).join('')}</div></div></div>
+ <div class="panel"><div class="panelhead"><h2>Lead status overview</h2></div><div class="quicklist">${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'].map(st=>`<div class="quickrow"><span>${st}</span><strong>${list.filter(x=>x.status===st).length}</strong></div>`).join('')}</div></div>
  <div class="panel"><div class="panelhead"><h2>Recently added leads</h2><button class="btn small" onclick="setPage('leads')">Open lead list</button></div>${table(sortByLeadDate(list).slice(0,5))}</div>`;
 }
 function leadDate(x){return x.trackerData?.['Date Received']||x.leadDate||x.created||''}
