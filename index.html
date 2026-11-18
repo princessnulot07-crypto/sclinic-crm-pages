@@ -544,10 +544,11 @@ function showPerformanceDetails(){
  const cohort=leads.filter(x=>perfRange(TD(x,'Date Received')));
  const scheduled=leads.filter(x=>perfRange(TD(x,'Consultation Date')));
  const closed=leads.filter(x=>perfRange(TD(x,'Sale Date'))&&perfConverted(x));
- const groups={leads:cohort,booked:cohort.filter(perfBooked),attended:cohort.filter(perfAttended),converted:cohort.filter(perfConverted),scheduled,actualAttended:scheduled.filter(perfAttended),noShows:scheduled.filter(x=>perfOutcome(x)==='no-show'||x.status==='No-show'),closed};
+ const reactivated=leads.filter(x=>perfRange(TD(x,'Last Contact Date'))&&dateSortValue(TD(x,'Date Received'))>0&&dateSortValue(TD(x,'Date Received'))<dateSortValue(document.getElementById('performanceFrom').value));
+ const groups={all:leads,reactivated,activity:leads.filter(x=>perfRange(TD(x,'Last Contact Date'))||perfRange(TD(x,'Consultation Date'))||perfRange(TD(x,'Sale Date'))),leads:cohort,booked:cohort.filter(perfBooked),attended:cohort.filter(perfAttended),converted:cohort.filter(perfConverted),scheduled,actualAttended:scheduled.filter(perfAttended),noShows:scheduled.filter(x=>perfOutcome(x)==='no-show'||x.status==='No-show'),closed};
  const aliases={cohortValue:'converted',bookingRate:'booked',saleRate:'converted',attendanceRate:'actualAttended',closedValue:'closed'};
  const items=(groups[aliases[kind]||kind]||[]).filter(x=>!source||perfSource(x)===source);
- const titles={leads:'Leads received',booked:'Consultations booked',attended:'Consultations attended (cohort)',converted:'Sales converted',cohortValue:'Cohort sales value',bookingRate:'Booking rate',saleRate:'Lead-to-sale rate',scheduled:'Consultations scheduled',actualAttended:'Consultations attended',noShows:'No-shows',attendanceRate:'Attendance rate',closed:'Sales closed',closedValue:'Sales value closed'};
+ const titles={all:'All CRM leads',reactivated:'Older leads contacted this period',activity:'Leads active this period',leads:'Leads received',booked:'Consultations booked',attended:'Consultations attended (cohort)',converted:'Sales converted',cohortValue:'Cohort sales value',bookingRate:'Booking rate',saleRate:'Lead-to-sale rate',scheduled:'Consultations scheduled',actualAttended:'Consultations attended',noShows:'No-shows',attendanceRate:'Attendance rate',closed:'Sales closed',closedValue:'Sales value closed'};
  el.innerHTML='<div class="panelhead"><h2>'+esc(titles[kind]||'Performance')+(source?' — '+esc(source):'')+' ('+items.length+')</h2><button type="button" class="btn small" onclick="performanceSelection=null;document.getElementById(&quot;performanceDetails&quot;).innerHTML=&quot;&quot;">Close</button></div>'+(items.length?table(items):'<div class="empty">No matching clients.</div>');
  el.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -557,6 +558,8 @@ function updatePerformance(){
  if(!from||!to||dateSortValue(from)>dateSortValue(to)){document.getElementById('performanceResults').innerHTML='<div class="notice">Select a valid From and To date.</div>';return}
  const cohort=leads.filter(x=>perfRange(TD(x,'Date Received')));
  const totalLeads=leads.length;
+ const reactivated=leads.filter(x=>perfRange(TD(x,'Last Contact Date'))&&dateSortValue(TD(x,'Date Received'))>0&&dateSortValue(TD(x,'Date Received'))<dateSortValue(from));
+ const activity=leads.filter(x=>perfRange(TD(x,'Last Contact Date'))||perfRange(TD(x,'Consultation Date'))||perfRange(TD(x,'Sale Date')));
  const scheduled=leads.filter(x=>perfRange(TD(x,'Consultation Date')));
  const closed=leads.filter(x=>perfRange(TD(x,'Sale Date'))&&perfConverted(x));
  const booked=cohort.filter(perfBooked),attended=cohort.filter(perfAttended),converted=cohort.filter(perfConverted);
@@ -564,6 +567,9 @@ function updatePerformance(){
  const percent=(n,d)=>d?(100*n/d).toFixed(1)+'%':'0.0%';
  const tile=(name,value,detail,kind)=>`<div class="stat" role="button" tabindex="0" style="cursor:pointer" onclick="choosePerformance(&quot;${kind}&quot;)" onkeydown="if(event.key===&quot;Enter&quot;||event.key===&quot; &quot;){event.preventDefault();choosePerformance(&quot;${kind}&quot;)}" title="Click to see matching clients"><label>${name}</label><strong>${value}</strong><small>${detail} · View clients →</small></div>`;
  const tiles=[
+ ['All CRM leads',totalLeads,'Includes leads received before this period','all'],
+ ['Older leads contacted this period',reactivated.length,'Received before From date; last contact in range','reactivated'],
+ ['Leads active this period',activity.length,'Contact, consultation, or sale date in range','activity'],
  ['Leads received',cohort.length,'Lead received date', 'leads'],
  ['Consultations booked (cohort)',booked.length,'Leads received this month', 'booked'],
  ['Consultations attended (cohort)',attended.length,'Leads received this month', 'attended'],
@@ -578,16 +584,16 @@ function updatePerformance(){
  ['Sales closed',closed.length,'Sale date in month', 'closed'],
  ['Sales value closed',money(leads.filter(x=>perfRange(TD(x,'Sale Date'))).reduce((s,x)=>s+perfMoney(x),0)),'AED · sale date in month', 'closedValue']
  ];
- const sources=[...new Set(cohort.map(perfSource))].sort((a,b)=>a.localeCompare(b));
+ const sources=[...new Set(leads.map(perfSource))].sort((a,b)=>a.localeCompare(b));
  const rows=sources.map(source=>{
- const group=cohort.filter(x=>perfSource(x)===source);
+ const group=leads.filter(x=>perfSource(x)===source);
  const b=group.filter(perfBooked).length,a=group.filter(perfAttended).length,cv=group.filter(perfConverted);
- return `<tr style="cursor:pointer" title="Click to view source leads" onclick="choosePerformance(&quot;leads&quot;,decodeURIComponent(&quot;${encodeURIComponent(source)}&quot;))"><td>${esc(source)} ↗</td><td>${group.length}</td><td>${b}</td><td>${a}</td><td>${cv.length}</td><td>${money(group.reduce((s,x)=>s+perfMoney(x),0))}</td></tr>`;
+ return `<tr style="cursor:pointer" title="Click to view source leads" onclick="choosePerformance(&quot;all&quot;,decodeURIComponent(&quot;${encodeURIComponent(source)}&quot;))"><td>${esc(source)} ↗</td><td>${group.length}</td><td>${b}</td><td>${a}</td><td>${cv.length}</td><td>${money(group.reduce((s,x)=>s+perfMoney(x),0))}</td></tr>`;
  }).join('');
- document.getElementById('performanceResults').innerHTML=`<p style="padding:12px 18px;margin:0;color:var(--muted)"><strong>${cohort.length} leads received in selected dates</strong> out of ${totalLeads} total CRM records. Dashboard totals may include leads outside this period.</p><div class="stats" style="padding:16px">${tiles.map(t=>tile(...t)).join('')}</div>
- <div class="panelhead"><h2>Lead source performance — acquisition cohort</h2></div>
- <div class="tablewrap"><table><thead><tr><th>Lead source</th><th>Leads</th><th>Booked</th><th>Attended</th><th>Converted</th><th>Sales value (AED)</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No leads received in this month.</td></tr>'}</tbody></table></div><div id="performanceDetails"></div>
- <p class="followup-filter-note" style="padding:12px 18px">Based on the CRM copy of Lead Tracker fields. Cohort metrics follow the lead received date; appointment metrics follow consultation dates; closed sales follow sale dates. Advertising spend is not included because it is maintained separately in the Advertising Spend tab. Changes in Google Sheets appear after synchronization.</p>`;
+ document.getElementById('performanceResults').innerHTML=`<p style="padding:12px 18px;margin:0;color:var(--muted)"><strong>${cohort.length} leads received in selected dates</strong> out of ${totalLeads} total CRM records. All historical leads are included below; period activity includes older leads.</p><div class="stats" style="padding:16px">${tiles.map(t=>tile(...t)).join('')}</div>
+ <div class="panelhead"><h2>Lead source performance — all historical leads</h2></div>
+ <div class="tablewrap"><table><thead><tr><th>Lead source</th><th>Leads</th><th>Booked</th><th>Attended</th><th>Converted</th><th>Sales value (AED)</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No leads found.</td></tr>'}</tbody></table></div><div id="performanceDetails"></div>
+ <p class="followup-filter-note" style="padding:12px 18px">Based on the CRM copy of Lead Tracker fields. All CRM leads and source totals include historical leads. Cohort metrics follow the lead received date; reactivation uses Last Contact Date; appointments use Consultation Date; closed sales use Sale Date. Advertising spend is not included because it is maintained separately in the Advertising Spend tab. Changes in Google Sheets appear after synchronization.</p>`;
  if(performanceSelection)showPerformanceDetails();
 }
 function renderSettings(){app.innerHTML=pageHead('Settings','CRM details and local data management.')+`<div class="panel"><h2>Clinic details</h2><div class="quicklist" style="margin-top:14px"><div class="quickrow"><span>Clinic</span><strong>S’CLINIC</strong></div><div class="quickrow"><span>WhatsApp Business number</span><strong>+971 58 676 7298</strong></div><div class="quickrow"><span>Account setup</span><strong>Shared staff access</strong></div><div class="quickrow"><span>Lead sources</span><strong>Instagram · Facebook · NA · LinkedIn</strong></div><div class="quickrow"><span>Platform</span><strong>Supabase cloud / browser-based</strong></div></div><div class="notice"><strong>WhatsApp connection status: Not connected.</strong><br>This standalone HTML file can open a WhatsApp chat using the saved number, but it cannot automatically receive WhatsApp messages or sync chats. Automated lead capture requires a secure server and an approved Meta WhatsApp Business Platform integration.</div></div><div class="panel"><h2>Data backup</h2><p style="color:var(--muted)">Your leads are saved to your secure shared Supabase database when you edit them. Download a JSON backup periodically for disaster recovery.</p><button class="btn" onclick="exportCSV()">Download lead register (CSV)</button> <button class="btn" onclick="backupJSON()">Download backup (JSON)</button> <div class="notice">Important: HTML-only storage is not cloud storage. Records are stored in the shared cloud database. Refresh to see changes from another device. Export backups regularly. Do not store medical records, scalp photos or sensitive clinical information in this prototype.</div></div>`}
