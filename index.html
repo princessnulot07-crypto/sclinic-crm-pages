@@ -473,6 +473,17 @@ async function updateAttendedStage(id,stage){
   alert('Could not save consultation status. Please try again.');
  }
 }
+async function saveConsultationNotes(id){
+ const x=leads.find(item=>item.id===id);if(!x)return;
+ const field=document.getElementById('consult-notes-'+id);
+ if(!field)return;
+ const previous=x.consultationNotes;
+ x.consultationNotes=field.value;
+ const btn=document.getElementById('consult-notes-save-'+id);
+ if(btn){btn.disabled=true;btn.textContent='Saving…';}
+ try{await saveCloudLead(x);renderAttendedConsultations();}
+ catch(err){x.consultationNotes=previous;if(btn){btn.disabled=false;btn.textContent='Save notes';}alert('Could not save consultation notes. Please try again.');}
+}
 function renderAttendedConsultations(){
  const filtered=consultationFilteredLeads();
  const booked=filtered.filter(isBookedLead);
@@ -484,10 +495,10 @@ function renderAttendedConsultations(){
  const buttons=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${attendedView===key}" onclick="filterAttendedStage('${key}')">${esc(label)} (${count})</button>`).join('');
  const rows=shown.map(x=>{
   const statusCell=`<select class="field consult-stage-select" data-stage="${esc(attendedStage(x))}" style="min-width:185px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select>`;
-  return `<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.trackerData?.['Booking Date']||''))}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.trackerData?.['Consultation Outcome']||x.status||'—')}</td><td>${statusCell}</td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`;
+  return `<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.trackerData?.['Booking Date']||''))}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.trackerData?.['Consultation Outcome']||x.status||'—')}</td><td>${statusCell}</td><td><textarea class="field" id="consult-notes-${esc(x.id)}" rows="2" style="min-width:200px;resize:vertical" placeholder="Add consultation notes">${esc(x.consultationNotes||'')}</textarea><button type="button" class="btn small" id="consult-notes-save-${esc(x.id)}" onclick="saveConsultationNotes('${esc(x.id)}')">Save notes</button></td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`;
  }).join('');
  app.innerHTML=pageHead('Attended Consultations','All booked clients, attendance, no-shows, and post-consultation follow-ups in one place.')+
- consultationRangeControls()+`<div class="panel"><div class="panelhead"><h2>Consultation overview</h2></div><div style="padding:14px 18px;display:flex;gap:8px;flex-wrap:wrap">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Booking date</th><th>Consultation date</th><th>Outcome / lead status</th><th>Post-consultation stage</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="7">No clients in this view.</td></tr>'}</tbody></table></div></div>`;
+ consultationRangeControls()+`<div class="panel"><div class="panelhead"><h2>Consultation overview</h2></div><div style="padding:14px 18px;display:flex;gap:8px;flex-wrap:wrap">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Booking date</th><th>Consultation date</th><th>Outcome / lead status</th><th>Post-consultation stage</th><th>Consultation notes</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="8">No clients in this view.</td></tr>'}</tbody></table></div></div>`;
 }
 
 const TD=(x,k)=>String((x.trackerData&&x.trackerData[k])||'').trim();
