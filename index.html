@@ -95,6 +95,10 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .pill.Converted{background:#e1f3e8;color:#236a44;border-color:#9fd4b3}
 .pill.Lost{background:#ececef;color:#5d5d67;border-color:#d0d0d7}
 
+
+/* Viewer presentation: database policies independently enforce read-only access. */
+.crm-viewer .nav button[data-page="settings"],.crm-viewer #saveBar button[onclick*="backupJSON"],.crm-viewer button[onclick*="openModal"],.crm-viewer button[onclick*="editLead"],.crm-viewer button[onclick*="saveConsultationNotes"],.crm-viewer button[onclick*="exportCSV"],.crm-viewer button[onclick*="restoreJSON"]{display:none!important}
+.crm-viewer .consult-stage-select,.crm-viewer select[id^="attended-"],.crm-viewer textarea[id^="consult-notes-"]{pointer-events:none;background:#f7f5f1;opacity:.85}
 </style>
 </head>
 <body>
@@ -134,7 +138,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
  </form>
  </div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<div id="loginOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f7f5f1;z-index:100;padding:20px"><form onsubmit="loginCRM(event)" style="background:white;border:1px solid #e8e3db;border-radius:14px;padding:30px;width:min(420px,100%);box-shadow:0 8px 28px #2927230b"><h2 style="letter-spacing:2px">S’CLINIC</h2><p style="color:#77736c">Secure team CRM sign-in · recovery v3</p><label>Email<input id="loginEmail" type="email" required autocomplete="username" class="field" style="display:block;width:100%;margin:7px 0 15px"></label><label>Password<input id="loginPassword" type="password" required autocomplete="current-password" class="field" style="display:block;width:100%;margin:7px 0 15px"></label><button class="btn primary" id="loginSubmit" type="submit" style="width:100%">Sign in</button><button class="btn" type="button" onclick="resetCRMPassword()" style="width:100%;margin-top:10px">Set / reset password</button><p id="loginMessage" role="status" style="color:#b85d55;font-size:12px"></p></form></div>
+<div id="loginOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f7f5f1;z-index:100;padding:20px"><form onsubmit="loginCRM(event)" style="background:white;border:1px solid #e8e3db;border-radius:14px;padding:30px;width:min(420px,100%);box-shadow:0 8px 28px #2927230b"><h2 style="letter-spacing:2px">S’CLINIC</h2><p style="color:#77736c">Secure team CRM sign-in · recovery v3</p><label>Email<input id="loginEmail" type="email" required autocomplete="username" class="field" style="display:block;width:100%;margin:7px 0 15px"></label><label>Password<input id="loginPassword" type="password" required autocomplete="current-password" class="field" style="display:block;width:100%;margin:7px 0 15px"></label><button class="btn primary" id="loginSubmit" type="submit" style="width:100%">Sign in</button><button class="btn" type="button" onclick="resetCRMPassword()" style="width:100%;margin-top:10px">Set / reset password</button><button class="btn" type="button" onclick="signupCRM()" style="width:100%;margin-top:8px">Create account</button><p id="loginMessage" role="status" style="color:#b85d55;font-size:12px"></p></form></div>
 <script>
 const SUPABASE_URL='https://nidzaresttneurunhjjk.supabase.co';
 const SUPABASE_KEY='sb_publishable_4eN38x0JgvkbeYXlVssXbQ_xgHuHcCM';
@@ -210,7 +214,7 @@ async function loadCloud(){
  }else render();
  cloudLoadInProgress=false;
 }
-async function saveCloudLead(lead){
+async function saveCloudLead(lead){if(crmRole==='viewer')throw Error('Viewer accounts cannot edit leads');
  if(!activeUser||!cloudReady)throw Error('Please sign in and load the CRM first');
  saveIndicator('Saving to shared cloud…');
  const {error}=await sb.from('leads').upsert({id:lead.id,payload:lead,updated_by:activeUser.id},{onConflict:'id'});
@@ -230,7 +234,8 @@ async function setupCloud(){
  if(error||!user){showLogin();return}
  const {data:membership,error:memberError}=await sb.from('team_members').select('role').eq('user_id',user.id).maybeSingle();
  if(memberError||!membership){await sb.auth.signOut();showLogin('This email is not authorized for the S’CLINIC CRM.');return}
- activeUser=user;
+ activeUser=user;crmRole=membership.role;
+ document.body.classList.toggle('crm-viewer',crmRole==='viewer');
  document.getElementById('loginOverlay').style.display='none';
  document.getElementById('crmShell').style.display='flex';
  document.getElementById('accountLabel').textContent=user.email+' ('+membership.role+')';
@@ -243,10 +248,17 @@ async function setupCloud(){
  window.addEventListener('focus',()=>{if(activeUser&&!savePending)loadCloud()});
 }
 function showLogin(message=''){
- activeUser=null;cloudReady=false;leads=[];
+ activeUser=null;crmRole=null;document.body.classList.remove('crm-viewer');cloudReady=false;leads=[];
  document.getElementById('crmShell').style.display='none';
  document.getElementById('loginOverlay').style.display='flex';
  document.getElementById('loginMessage').textContent=message;
+}
+async function signupCRM(){
+ const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
+ const msg=document.getElementById('loginMessage');
+ if(!email||password.length<8){msg.textContent='Enter your email and a password with at least 8 characters.';return;}
+ const {error}=await sb.auth.signUp({email,password});
+ msg.textContent=error?error.message:'Account created. Please confirm your email if requested. An administrator must approve your Viewer access before you can sign in.';
 }
 async function loginCRM(e){
  e.preventDefault();
@@ -288,11 +300,12 @@ function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lea
 leads=leads.map(x=>({...x,source:normalizeSource(x)}));
 const getDue=()=>leads.filter(x=>x.followDate&&x.followDate<=today()&&!['Converted','Lost'].includes(x.status));
 function stats(){return {total:leads.length,new:leads.filter(x=>x.status==='New').length,booked:leads.filter(x=>x.status==='Booked').length,converted:leads.filter(x=>x.status==='Converted').length,revenue:leads.filter(x=>(x.status==='Converted'||String(x.trackerData?.['Sale Converted']||'').trim().toLowerCase()==='yes')).reduce((s,x)=>s+(saleAmount(x)||0),0)}}
-function setPage(p){if(p==='followups')p='leads';page=p;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
+function setPage(p){if(crmRole==='viewer'&&p==='settings')return;if(p==='followups')p='leads';page=p;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
 function pageHead(title,desc,action=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div>${action}</div>`}
 function render(){
  document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',consultations:'Consultations',attended:'Attended Consultations',reports:'Performance',settings:'Settings'})[page];
+ if(crmRole==='viewer'&&page==='settings'){page='dashboard';document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));}
  if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='consultations'){page='attended';renderAttendedConsultations();}if(page==='attended')renderAttendedConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
 }
 // Dashboard date range uses the date each lead was received, inclusive of both endpoints.
@@ -475,7 +488,7 @@ function attendedStage(x){
    x.status==='Converted'?'Converted':attendedClient(x)?'Follow Up':'Not Yet Attended';
 }
 function filterAttendedStage(stage){attendedView=stage;renderAttendedConsultations()}
-async function updateAttendedStage(id,stage){
+async function updateAttendedStage(id,stage){if(crmRole==='viewer')return;
  if(!CONSULTATION_STAGES.includes(stage))return;
  const x=leads.find(item=>item.id===id);if(!x)return;
  const previous=x.consultationStage;
@@ -491,7 +504,7 @@ async function updateAttendedStage(id,stage){
   alert('Could not save consultation status. Please try again.');
  }
 }
-async function saveConsultationNotes(id){
+async function saveConsultationNotes(id){if(crmRole==='viewer')return;
  const x=leads.find(item=>item.id===id);if(!x)return;
  const field=document.getElementById('consult-notes-'+id);
  if(!field)return;
@@ -669,7 +682,7 @@ function updatePerformance(){
  if(performanceSelection)showPerformanceDetails();
 }
 function renderSettings(){app.innerHTML=pageHead('Settings','CRM details and local data management.')+`<div class="panel"><h2>Clinic details</h2><div class="quicklist" style="margin-top:14px"><div class="quickrow"><span>Clinic</span><strong>S’CLINIC</strong></div><div class="quickrow"><span>WhatsApp Business number</span><strong>+971 58 676 7298</strong></div><div class="quickrow"><span>Account setup</span><strong>Shared staff access</strong></div><div class="quickrow"><span>Lead sources</span><strong>Instagram · Facebook · NA · LinkedIn</strong></div><div class="quickrow"><span>Platform</span><strong>Supabase cloud / browser-based</strong></div></div><div class="notice"><strong>WhatsApp connection status: Not connected.</strong><br>This standalone HTML file can open a WhatsApp chat using the saved number, but it cannot automatically receive WhatsApp messages or sync chats. Automated lead capture requires a secure server and an approved Meta WhatsApp Business Platform integration.</div></div><div class="panel"><h2>Data backup</h2><p style="color:var(--muted)">Your leads are saved to your secure shared Supabase database when you edit them. Download a JSON backup periodically for disaster recovery.</p><button class="btn" onclick="exportCSV()">Download lead register (CSV)</button> <button class="btn" onclick="backupJSON()">Download backup (JSON)</button> <div class="notice">Important: HTML-only storage is not cloud storage. Records are stored in the shared cloud database. Refresh to see changes from another device. Export backups regularly. Do not store medical records, scalp photos or sensitive clinical information in this prototype.</div></div>`}
-function openModal(id=''){document.getElementById('leadForm').reset();document.getElementById('editId').value='';document.getElementById('modalTitle').textContent=id?'Edit lead':'Add new lead';document.getElementById('leadDateInput').value=today();if(id){let x=leads.find(l=>l.id===id);if(!x)return;document.getElementById('editId').value=x.id;['firstName','lastName','phone','source','status','followDate','consultDate','value','notes'].forEach(k=>document.getElementById(k).value=x[k]??'');document.getElementById('leadDateInput').value=leadDate(x)}document.getElementById('leadModal').classList.add('show')}
+function openModal(id=''){if(crmRole==='viewer')return;document.getElementById('leadForm').reset();document.getElementById('editId').value='';document.getElementById('modalTitle').textContent=id?'Edit lead':'Add new lead';document.getElementById('leadDateInput').value=today();if(id){let x=leads.find(l=>l.id===id);if(!x)return;document.getElementById('editId').value=x.id;['firstName','lastName','phone','source','status','followDate','consultDate','value','notes'].forEach(k=>document.getElementById(k).value=x[k]??'');document.getElementById('leadDateInput').value=leadDate(x)}document.getElementById('leadModal').classList.add('show')}
 function closeModal(){document.getElementById('leadModal').classList.remove('show')}
 function editLead(id){openModal(id)}
 document.getElementById('leadForm').addEventListener('submit',async e=>{e.preventDefault();let id=document.getElementById('editId').value,phone=document.getElementById('phone').value.trim();let duplicate=leads.find(x=>x.phone.replace(/\D/g,'')===phone.replace(/\D/g,'')&&x.id!==id);if(duplicate&&!confirm('A lead with this phone number already exists. Save another record anyway?'))return;let previous=id?leads.find(l=>l.id===id):null;let trackerData={...(previous?.trackerData||{}),'Date Received':document.getElementById('leadDateInput').value,'Next Follow-up Date':document.getElementById('followDate').value,'Consultation Date':document.getElementById('consultDate').value,'Notes':document.getElementById('notes').value,'Lead Source':document.getElementById('source').value,'Sale Value (AED)':document.getElementById('value').value};
