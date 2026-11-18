@@ -69,6 +69,19 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 
 .consult-stage-select[data-stage="Lost"],.consult-stage-tab[data-stage="Lost"]{background:#ececef;color:#5d5d67;border-color:#d0d0d7}
 
+
+/* All Leads uses lead statuses as color-coded tabs, separate from consultation stages. */
+.lead-status-tab[data-lead-status="New"]{background:#f0eee9;color:#625d55;border-color:#ded9d1}
+.lead-status-tab[data-lead-status="Called"]{background:#e8f1fb;color:#285c89;border-color:#b8d2ed}
+.lead-status-tab[data-lead-status="Called-No-Answer"],.lead-status-tab[data-lead-status="No-response"]{background:#fff0e3;color:#92571c;border-color:#ecc69c}
+.lead-status-tab[data-lead-status="Interested"]{background:#f3eaff;color:#70479b;border-color:#d9c3ef}
+.lead-status-tab[data-lead-status="Follow-up-Required"]{background:#fff0d9;color:#8b5700;border-color:#e9c58c}
+.lead-status-tab[data-lead-status="Booked"]{background:#e6f0ff;color:#245c9b;border-color:#a9c7ed}
+.lead-status-tab[data-lead-status="Attended"]{background:#e5f5f3;color:#176c66;border-color:#a5d8d1}
+.lead-status-tab[data-lead-status="No-show"]{background:#fce7e7;color:#a63d3d;border-color:#efb7b7}
+.lead-status-tab[data-lead-status="Converted"]{background:#e1f3e8;color:#236a44;border-color:#9fd4b3}
+.lead-status-tab[data-lead-status="Lost"]{background:#ececef;color:#5d5d67;border-color:#d0d0d7}
+
 /* All Leads: accessible status badges, without changing lead data */
 .pill{font-weight:700;border:1px solid transparent;white-space:nowrap}
 .pill.New,.pill.Unspecified{background:#f0eee9;color:#625d55;border-color:#ded9d1}
@@ -322,7 +335,7 @@ function openDashboardMetric(kind){
  document.getElementById('leadFrom').value=dashboardRange.from;
  document.getElementById('leadTo').value=dashboardRange.to;
  document.getElementById('statusFilter').value=status;
- filterLeads();
+ leadStageView=status||'allLeads';filterLeads();
  document.getElementById('leadTable')?.scrollIntoView({block:'nearest'});
 }
 function renderDashboard(){
@@ -376,28 +389,29 @@ function renderLeads(){
  <label class="lead-date-filter">From <input class="field" type="date" id="leadFrom" onchange="filterLeads()" aria-label="Lead date from"></label>
  <label class="lead-date-filter">To <input class="field" type="date" id="leadTo" onchange="filterLeads()" aria-label="Lead date to"></label>
  <select class="field" id="leadOrder" onchange="filterLeads()" aria-label="Sort lead dates"><option value="newest">Lead date: Newest first ↓</option><option value="oldest">Lead date: Oldest first ↑</option></select>
- <select class="field" id="statusFilter" onchange="filterLeads()" aria-label="Filter by status"><option value="">All statuses</option>${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost','Unspecified'].map(x=>`<option>${x}</option>`).join('')}</select>
+ <select class="field" id="statusFilter" style="display:none" onchange="filterLeads()" aria-label="Filter by status"><option value="">All statuses</option>${['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost','Unspecified'].map(x=>`<option>${x}</option>`).join('')}</select>
  <select class="field" id="sourceFilter" onchange="filterLeads()" aria-label="Filter by source"><option value="">All sources</option>${sources.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')}</select>
  <button type="button" class="btn small" onclick="resetLeadFilters()">Clear filters</button></div>
  <div id="leadStageTabs" class="lead-stage-tabs"></div><div id="leadTable"></div></div>`;
  filterLeads();
 }
 let leadStageView='allLeads';
-function chooseLeadStage(stage){leadStageView=stage;filterLeads();}
+function chooseLeadStage(stage){leadStageView=stage;document.getElementById('statusFilter').value=stage==='allLeads'?'':stage;filterLeads();}
 function resetLeadFilters(){
  bookedDashboardView=false;
  ['search','statusFilter','sourceFilter','leadFrom','leadTo'].forEach(id=>document.getElementById(id).value='');
- document.getElementById('leadOrder').value='newest';filterLeads();
+ document.getElementById('leadOrder').value='newest';leadStageView='allLeads';filterLeads();
 }
 function filterLeads(){
  const q=document.getElementById('search').value.toLowerCase().trim(),st=document.getElementById('statusFilter').value,so=document.getElementById('sourceFilter').value;
  const from=document.getElementById('leadFrom').value, to=document.getElementById('leadTo').value;
- const matchesConsultation=(x,stage)=>stage==='allLeads'||(stage==='booked'?isBookedLead(x):stage==='all'?attendedClient(x):stage==='noShows'?(x.status==='No-show'||String(x.trackerData?.['Consultation Outcome']||'').trim().toLowerCase()==='no-show'):attendedStage(x)===stage&&(stage!=='Not Yet Attended'||isBookedLead(x)));
+
  const fromMs=from?dateSortValue(from):0,toMs=to?dateSortValue(to):0;
  const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!bookedDashboardView||isBookedLead(x))&&(`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!st||x.status===st)&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
- const tabs=[['allLeads','All Leads',list.length],['booked','All Booked',list.filter(x=>matchesConsultation(x,'booked')).length],['all','All Attended',list.filter(x=>matchesConsultation(x,'all')).length],['noShows','No-show',list.filter(x=>matchesConsultation(x,'noShows')).length],...CONSULTATION_STAGES.map(stage=>[stage,stage,list.filter(x=>matchesConsultation(x,stage)).length])];
- document.getElementById('leadStageTabs').innerHTML=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${leadStageView===key}" onclick="chooseLeadStage('${key}')">${esc(label)} (${count})</button>`).join('');
- const shown=list.filter(x=>matchesConsultation(x,leadStageView));
+ const leadStatuses=['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'];
+ const tabs=[['allLeads','All Leads',list.length],...leadStatuses.map(status=>[status,status,list.filter(x=>x.status===status).length])];
+ document.getElementById('leadStageTabs').innerHTML=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab lead-status-tab" data-lead-status="${esc(key.replace(/\\s+/g,'-'))}" aria-pressed="${leadStageView===key}" onclick="chooseLeadStage('${key}')">${esc(label)} (${count})</button>`).join('');
+ const shown=list;
  document.getElementById('leadCount').textContent=`${bookedDashboardView?'Booked clients · ':''}Showing ${shown.length} of ${leads.length} leads`;
  document.getElementById('leadTable').innerHTML=table(orderedLeadRegister(shown),true);
 }
