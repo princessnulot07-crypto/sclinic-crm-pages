@@ -56,6 +56,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   <button data-page="leads"><span>◎</span><span class="navlabel">All Leads</span></button>
   <button data-page="followups"><span>◷</span><span class="navlabel">Follow-ups</span></button>
   <button data-page="consultations"><span>▣</span><span class="navlabel">Consultations</span></button>
+  <button data-page="attended"><span>✓</span><span class="navlabel">Attended Consultations</span></button>
   <button data-page="reports"><span>▤</span><span class="navlabel">Reports</span></button>
   <button data-page="settings"><span>⚙</span><span class="navlabel">Settings</span></button>
  </nav>
@@ -234,8 +235,8 @@ function setPage(p){page=p;document.querySelectorAll('.nav button').forEach(b=>b
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
 function pageHead(title,desc,action=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div>${action}</div>`}
 function render(){
- document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',followups:'Follow-ups',consultations:'Consultations',reports:'Reports',settings:'Settings'})[page];
- if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='followups')renderFollowups();if(page==='consultations')renderConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
+ document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',followups:'Follow-ups',consultations:'Consultations',attended:'Attended Consultations',reports:'Reports',settings:'Settings'})[page];
+ if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='followups')renderFollowups();if(page==='consultations')renderConsultations();if(page==='attended')renderAttendedConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
 }
 // Dashboard date range uses the date each lead was received, inclusive of both endpoints.
 let dashboardRange={from:'',to:''};
@@ -372,6 +373,46 @@ function renderFollowups(){
  <p class="followup-filter-note">${desc}</p>${visible.length?table(visible):'<div class="empty">No matching follow-up leads.</div>'}</div>`;
 }
 function renderConsultations(){let list=leads.filter(x=>isBookedLead(x)||x.consultDate).sort((a,b)=>String(a.consultDate||a.trackerData?.['Booking Date']||'').localeCompare(String(b.consultDate||b.trackerData?.['Booking Date']||'')));app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`<div class="stats"><div class="stat"><label>Booked</label><strong>${leads.filter(isBookedLead).length}</strong></div><div class="stat"><label>Attended</label><strong>${leads.filter(x=>x.status==='Attended').length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${leads.filter(x=>x.status==='No-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${stats().converted}</strong></div></div><div class="panel"><div class="panelhead"><h2>Booked clients and scheduled consultations</h2></div>${table(list)}</div>`}
+
+/* Separate post-consultation workflow. Never changes lead status or CRM ID. */
+let attendedView='all';
+const CONSULTATION_STAGES=['Follow Up','Waiting to Book','Converted'];
+function attendedClient(x){
+ const t=x.trackerData||{};
+ const outcome=String(t['Consultation Outcome']||'').trim().toLowerCase();
+ return x.status==='Attended'||x.status==='Converted'||outcome==='attended'||
+   !!x.consultationStage;
+}
+function attendedStage(x){
+ return CONSULTATION_STAGES.includes(x.consultationStage)?x.consultationStage:
+   x.status==='Converted'?'Converted':'Follow Up';
+}
+function filterAttendedStage(stage){attendedView=stage;renderAttendedConsultations()}
+async function updateAttendedStage(id,stage){
+ if(!CONSULTATION_STAGES.includes(stage))return;
+ const x=leads.find(item=>item.id===id);if(!x)return;
+ const previous=x.consultationStage;
+ x.consultationStage=stage;
+ const select=document.getElementById('attended-'+id);
+ if(select)select.disabled=true;
+ try{
+  await saveCloudLead(x);
+  renderAttendedConsultations();
+ }catch(err){
+  x.consultationStage=previous;
+  renderAttendedConsultations();
+  alert('Could not save consultation status. Please try again.');
+ }
+}
+function renderAttendedConsultations(){
+ const all=leads.filter(attendedClient);
+ const shown=attendedView==='all'?all:all.filter(x=>attendedStage(x)===attendedView);
+ const tabs=[['all','All Attended'],...CONSULTATION_STAGES.map(x=>[x,x])];
+ const buttons=tabs.map(([key,label])=>`<button type="button" class="btn small" style="margin:0 7px 7px 0;${attendedView===key?'background:#292723;color:#fff;':''}" onclick="filterAttendedStage('${key}')">${esc(label)} (${key==='all'?all.length:all.filter(x=>attendedStage(x)===key).length})</button>`).join('');
+ const rows=shown.map(x=>`<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.status||'—')}</td><td><select class="field" style="min-width:150px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select></td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`).join('');
+ app.innerHTML=pageHead('Attended Consultations','Track the next step after a client attends a consultation. This status is separate from the main lead status.')+
+ `<div class="panel"><div class="panelhead"><h2>Post-consultation status</h2></div><div style="padding:14px 18px">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Consultation date</th><th>Lead status</th><th>Consultation follow-up status</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No attended consultations in this view.</td></tr>'}</tbody></table></div></div>`;
+}
 const TD=(x,k)=>String((x.trackerData&&x.trackerData[k])||'').trim();
 const DAYMS=86400000;
 const REP_ROWS=['Meta','LinkedIn','Google / Walk-in','Sleeping leads, but managed to book'];
