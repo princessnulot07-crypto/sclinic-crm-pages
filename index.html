@@ -82,7 +82,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   <button class="active" data-page="dashboard"><span>⌂</span><span class="navlabel">Dashboard</span></button>
   <button data-page="leads"><span>◎</span><span class="navlabel">All Leads</span></button>
   <button data-page="followups"><span>◷</span><span class="navlabel">Follow-ups</span></button>
-  <button data-page="consultations"><span>▣</span><span class="navlabel">Consultations</span></button>
   <button data-page="attended"><span>✓</span><span class="navlabel">Attended Consultations</span></button>
   <button data-page="reports"><span>▤</span><span class="navlabel">Performance</span></button>
   <button data-page="settings"><span>⚙</span><span class="navlabel">Settings</span></button>
@@ -272,7 +271,7 @@ document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',(
 function pageHead(title,desc,action=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div>${action}</div>`}
 function render(){
  document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',followups:'Follow-ups',consultations:'Consultations',attended:'Attended Consultations',reports:'Performance',settings:'Settings'})[page];
- if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='followups')renderFollowups();if(page==='consultations')renderConsultations();if(page==='attended')renderAttendedConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
+ if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='followups')renderFollowups();if(page==='consultations'){page='attended';renderAttendedConsultations();}if(page==='attended')renderAttendedConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
 }
 // Dashboard date range uses the date each lead was received, inclusive of both endpoints.
 let dashboardRange={from:'',to:''};
@@ -306,7 +305,7 @@ function followupCandidates(items=leads){
 let bookedDashboardView=false;
 const isBookedLead=x=>x.status==='Booked'||!!String(x.trackerData?.['Booking Date']||'').trim();
 function openDashboardMetric(kind){
- if(kind==='booked'){setPage('consultations');return;}
+ if(kind==='booked'){attendedView='booked';setPage('attended');return;}
  bookedDashboardView=false;
  const status=kind==='new'?'New':kind==='lost'?'Lost':kind==='converted'?'Converted':'';
  setPage('leads');
@@ -438,7 +437,7 @@ function renderConsultations(){
 }
 
 /* Separate post-consultation workflow. Never changes lead status or CRM ID. */
-let attendedView='all';
+let attendedView='booked';
 const CONSULTATION_STAGES=['Follow Up','Waiting to Book','Converted'];
 function attendedClient(x){
  const t=x.trackerData||{};
@@ -468,14 +467,21 @@ async function updateAttendedStage(id,stage){
  }
 }
 function renderAttendedConsultations(){
- const all=consultationFilteredLeads().filter(attendedClient);
- const shown=attendedView==='all'?all:all.filter(x=>attendedStage(x)===attendedView);
- const tabs=[['all','All Attended'],...CONSULTATION_STAGES.map(x=>[x,x])];
- const buttons=tabs.map(([key,label])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${attendedView===key}" onclick="filterAttendedStage('${key}')">${esc(label)} (${key==='all'?all.length:all.filter(x=>attendedStage(x)===key).length})</button>`).join('');
- const rows=shown.map(x=>`<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.status||'—')}</td><td><select class="field consult-stage-select" data-stage="${esc(attendedStage(x))}" style="min-width:150px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select></td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`).join('');
- app.innerHTML=pageHead('Attended Consultations','Track the next step after a client attends a consultation. This status is separate from the main lead status.')+
- consultationRangeControls()+`<div class="panel"><div class="panelhead"><h2>Post-consultation status</h2></div><div style="padding:14px 18px">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Consultation date</th><th>Lead status</th><th>Consultation follow-up status</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No attended consultations in this view.</td></tr>'}</tbody></table></div></div>`;
+ const filtered=consultationFilteredLeads();
+ const booked=filtered.filter(isBookedLead);
+ const all=filtered.filter(attendedClient);
+ const noShows=filtered.filter(x=>x.status==='No-show'||String(x.trackerData?.['Consultation Outcome']||'').trim().toLowerCase()==='no-show');
+ const tabs=[['booked','All Booked',booked.length],['all','All Attended',all.length],['noShows','No-show',noShows.length],...CONSULTATION_STAGES.map(x=>[x,x,all.filter(y=>attendedStage(y)===x).length])];
+ const shown=attendedView==='booked'?booked:attendedView==='noShows'?noShows:attendedView==='all'?all:all.filter(x=>attendedStage(x)===attendedView);
+ const buttons=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${attendedView===key}" onclick="filterAttendedStage('${key}')">${esc(label)} (${count})</button>`).join('');
+ const rows=shown.map(x=>{
+  const statusCell=attendedClient(x)?`<select class="field consult-stage-select" style="min-width:150px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select>`:'<span class="sub">Not yet attended</span>';
+  return `<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.trackerData?.['Booking Date']||''))}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.trackerData?.['Consultation Outcome']||x.status||'—')}</td><td>${statusCell}</td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`;
+ }).join('');
+ app.innerHTML=pageHead('Attended Consultations','All booked clients, attendance, no-shows, and post-consultation follow-ups in one place.')+
+ consultationRangeControls()+`<div class="panel"><div class="panelhead"><h2>Consultation overview</h2></div><div style="padding:14px 18px;display:flex;gap:8px;flex-wrap:wrap">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Booking date</th><th>Consultation date</th><th>Outcome / lead status</th><th>Post-consultation stage</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="7">No clients in this view.</td></tr>'}</tbody></table></div></div>`;
 }
+
 const TD=(x,k)=>String((x.trackerData&&x.trackerData[k])||'').trim();
 const DAYMS=86400000;
 const REP_ROWS=['Meta','LinkedIn','Google / Walk-in','Sleeping leads, but managed to book'];
