@@ -567,7 +567,6 @@ function updatePerformance(){
  const percent=(n,d)=>d?(100*n/d).toFixed(1)+'%':'0.0%';
  const tile=(name,value,detail,kind)=>`<div class="stat" role="button" tabindex="0" style="cursor:pointer" onclick="choosePerformance(&quot;${kind}&quot;)" onkeydown="if(event.key===&quot;Enter&quot;||event.key===&quot; &quot;){event.preventDefault();choosePerformance(&quot;${kind}&quot;)}" title="Click to see matching clients"><label>${name}</label><strong>${value}</strong><small>${detail} · View clients →</small></div>`;
  const tiles=[
- ['Sales value closed',money(leads.filter(x=>perfRange(TD(x,'Sale Date'))).reduce((s,x)=>s+perfMoney(x),0)),'AED · sale date in month', 'closedValue'],
  ['All CRM leads',totalLeads,'Includes leads received before this period','all'],
  ['Older leads contacted this period',reactivated.length,'Received before From date; last contact in range','reactivated'],
  ['Leads active this period',activity.length,'Contact, consultation, or sale date in range','activity'],
