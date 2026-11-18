@@ -374,6 +374,18 @@ function renderFollowups(){
 }
 function renderConsultations(){let list=leads.filter(x=>isBookedLead(x)||x.consultDate).sort((a,b)=>String(a.consultDate||a.trackerData?.['Booking Date']||'').localeCompare(String(b.consultDate||b.trackerData?.['Booking Date']||'')));app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`<div class="stats"><div class="stat"><label>Booked</label><strong>${leads.filter(isBookedLead).length}</strong></div><div class="stat"><label>Attended</label><strong>${leads.filter(x=>x.status==='Attended').length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${leads.filter(x=>x.status==='No-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${stats().converted}</strong></div></div><div class="panel"><div class="panelhead"><h2>Booked clients and scheduled consultations</h2></div>${table(list)}</div>`}
 
+/* Attended consultation workflow status colors */
+.consult-stage-select{font-weight:700;border-radius:8px;padding:9px 12px;border:1px solid transparent;cursor:pointer}
+.consult-stage-select[data-stage="Follow Up"]{background:#fff0d9;color:#8b5700;border-color:#e9c58c}
+.consult-stage-select[data-stage="Waiting to Book"]{background:#e6f0ff;color:#245c9b;border-color:#a9c7ed}
+.consult-stage-select[data-stage="Converted"]{background:#e1f3e8;color:#236a44;border-color:#9fd4b3}
+.consult-stage-tab{border:1px solid #e8e3db;border-radius:8px;padding:9px 13px;font-weight:650;cursor:pointer;margin:0 7px 7px 0}
+.consult-stage-tab[data-stage="all"]{background:#f3f0ec;color:#504c47}
+.consult-stage-tab[data-stage="Follow Up"]{background:#fff0d9;color:#8b5700}
+.consult-stage-tab[data-stage="Waiting to Book"]{background:#e6f0ff;color:#245c9b}
+.consult-stage-tab[data-stage="Converted"]{background:#e1f3e8;color:#236a44}
+.consult-stage-tab[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:1px}
+
 /* Separate post-consultation workflow. Never changes lead status or CRM ID. */
 let attendedView='all';
 const CONSULTATION_STAGES=['Follow Up','Waiting to Book','Converted'];
@@ -394,7 +406,7 @@ async function updateAttendedStage(id,stage){
  const previous=x.consultationStage;
  x.consultationStage=stage;
  const select=document.getElementById('attended-'+id);
- if(select)select.disabled=true;
+ if(select){select.disabled=true;select.dataset.stage=stage;}
  try{
   await saveCloudLead(x);
   renderAttendedConsultations();
@@ -408,8 +420,8 @@ function renderAttendedConsultations(){
  const all=leads.filter(attendedClient);
  const shown=attendedView==='all'?all:all.filter(x=>attendedStage(x)===attendedView);
  const tabs=[['all','All Attended'],...CONSULTATION_STAGES.map(x=>[x,x])];
- const buttons=tabs.map(([key,label])=>`<button type="button" class="btn small" style="margin:0 7px 7px 0;${attendedView===key?'background:#292723;color:#fff;':''}" onclick="filterAttendedStage('${key}')">${esc(label)} (${key==='all'?all.length:all.filter(x=>attendedStage(x)===key).length})</button>`).join('');
- const rows=shown.map(x=>`<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.status||'—')}</td><td><select class="field" style="min-width:150px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select></td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`).join('');
+ const buttons=tabs.map(([key,label])=>`<button type="button" class="consult-stage-tab" data-stage="${esc(key)}" aria-pressed="${attendedView===key}" onclick="filterAttendedStage('${key}')">${esc(label)} (${key==='all'?all.length:all.filter(x=>attendedStage(x)===key).length})</button>`).join('');
+ const rows=shown.map(x=>`<tr><td><strong>${esc([x.firstName,x.lastName].filter(Boolean).join(' ')||x.trackerData?.['Lead Name']||'Unnamed')}</strong></td><td>${esc(x.phone||'—')}</td><td>${esc(displayDate(x.consultDate||x.trackerData?.['Consultation Date']))}</td><td>${esc(x.status||'—')}</td><td><select class="field consult-stage-select" data-stage="${esc(attendedStage(x))}" style="min-width:150px" id="attended-${esc(x.id)}" onchange="updateAttendedStage('${esc(x.id)}',this.value)">${CONSULTATION_STAGES.map(stage=>`<option value="${stage}" ${attendedStage(x)===stage?'selected':''}>${stage}</option>`).join('')}</select></td><td><button type="button" class="btn small" onclick="editLead('${esc(x.id)}')">View / Edit</button></td></tr>`).join('');
  app.innerHTML=pageHead('Attended Consultations','Track the next step after a client attends a consultation. This status is separate from the main lead status.')+
  `<div class="panel"><div class="panelhead"><h2>Post-consultation status</h2></div><div style="padding:14px 18px">${buttons}</div><div class="tablewrap"><table><thead><tr><th>Client</th><th>Phone</th><th>Consultation date</th><th>Lead status</th><th>Consultation follow-up status</th><th>Action</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No attended consultations in this view.</td></tr>'}</tbody></table></div></div>`;
 }
