@@ -528,7 +528,7 @@ function renderReports(){
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const first=today.slice(0,7)+'-01';
  const last=new Date(Date.UTC(Number(today.slice(0,4)),Number(today.slice(5,7)),0)).toISOString().slice(0,10);
- app.innerHTML=pageHead('Performance','Based on the Lead Tracker performance formulas.',`<button type="button" class="btn" onclick="exportCSV()">Export CSV</button>`)+
+ app.innerHTML=pageHead('Performance','Date-filtered Lead Tracker results. Dashboard may show a different total if its date filters differ.',`<button type="button" class="btn" onclick="exportCSV()">Export CSV</button>`)+
  `<div class="panel"><div class="panelhead"><h2>Filter dates</h2><div style="display:flex;gap:12px;flex-wrap:wrap"><label>From <input type="date" class="field" id="performanceFrom" value="${first}" onchange="performanceSelection=null;updatePerformance()"></label><label>To <input type="date" class="field" id="performanceTo" value="${last}" onchange="performanceSelection=null;updatePerformance()"></label></div></div><div id="performanceResults"></div></div>`;
  updatePerformance();
 }
@@ -539,8 +539,7 @@ function choosePerformance(kind,source=''){
 }
 function showPerformanceDetails(){
  const el=document.getElementById('performanceDetails');
- const month=document.getElementById('performanceMonth')?.value;
- if(!el||!month||!performanceSelection)return;
+ if(!el||!performanceSelection)return;
  const {kind,source}=performanceSelection;
  const cohort=leads.filter(x=>perfRange(TD(x,'Date Received')));
  const scheduled=leads.filter(x=>perfRange(TD(x,'Consultation Date')));
@@ -557,6 +556,7 @@ function updatePerformance(){
  const from=document.getElementById('performanceFrom')?.value,to=document.getElementById('performanceTo')?.value;
  if(!from||!to||dateSortValue(from)>dateSortValue(to)){document.getElementById('performanceResults').innerHTML='<div class="notice">Select a valid From and To date.</div>';return}
  const cohort=leads.filter(x=>perfRange(TD(x,'Date Received')));
+ const totalLeads=leads.length;
  const scheduled=leads.filter(x=>perfRange(TD(x,'Consultation Date')));
  const closed=leads.filter(x=>perfRange(TD(x,'Sale Date'))&&perfConverted(x));
  const booked=cohort.filter(perfBooked),attended=cohort.filter(perfAttended),converted=cohort.filter(perfConverted);
@@ -584,7 +584,7 @@ function updatePerformance(){
  const b=group.filter(perfBooked).length,a=group.filter(perfAttended).length,cv=group.filter(perfConverted);
  return `<tr style="cursor:pointer" title="Click to view source leads" onclick="choosePerformance(&quot;leads&quot;,decodeURIComponent(&quot;${encodeURIComponent(source)}&quot;))"><td>${esc(source)} ↗</td><td>${group.length}</td><td>${b}</td><td>${a}</td><td>${cv.length}</td><td>${money(group.reduce((s,x)=>s+perfMoney(x),0))}</td></tr>`;
  }).join('');
- document.getElementById('performanceResults').innerHTML=`<div class="stats" style="padding:16px">${tiles.map(t=>tile(...t)).join('')}</div>
+ document.getElementById('performanceResults').innerHTML=`<p style="padding:12px 18px;margin:0;color:var(--muted)"><strong>${cohort.length} leads received in selected dates</strong> out of ${totalLeads} total CRM records. Dashboard totals may include leads outside this period.</p><div class="stats" style="padding:16px">${tiles.map(t=>tile(...t)).join('')}</div>
  <div class="panelhead"><h2>Lead source performance — acquisition cohort</h2></div>
  <div class="tablewrap"><table><thead><tr><th>Lead source</th><th>Leads</th><th>Booked</th><th>Attended</th><th>Converted</th><th>Sales value (AED)</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No leads received in this month.</td></tr>'}</tbody></table></div><div id="performanceDetails"></div>
  <p class="followup-filter-note" style="padding:12px 18px">Based on the CRM copy of Lead Tracker fields. Cohort metrics follow the lead received date; appointment metrics follow consultation dates; closed sales follow sale dates. Advertising spend is not included because it is maintained separately in the Advertising Spend tab. Changes in Google Sheets appear after synchronization.</p>`;
