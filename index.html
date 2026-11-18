@@ -45,6 +45,19 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .pill.Follow-up-Required{background:#f5edda;color:#85662f}.dashboard-date-panel .formitem{min-width:190px}.followup-stats{margin-top:0;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.lead-date-filter{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}.lead-date-filter input{max-width:160px}@media(max-width:520px){.lead-date-filter{flex:1}.lead-date-filter input{width:100%;min-width:0}}
  .savewarning{background:#fff2d9;border-bottom:1px solid #e7d3a7;padding:10px 30px;font-size:12px;color:#6a4c22}
 #saveBar{background:#f0eae2;border-bottom:1px solid #dfd2c3;padding:10px 30px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px}#saveBar .btn{padding:7px 11px}#saveStatus{font-weight:600;color:#6f5944}#saveStatus.error{color:#b85d55}
+/* Attended consultation workflow status colors */
+.consult-stage-select{font-weight:700;border-radius:8px;padding:9px 12px;border:1px solid transparent;cursor:pointer}
+.consult-stage-select[data-stage="Follow Up"]{background:#fff0d9;color:#8b5700;border-color:#e9c58c}
+.consult-stage-select[data-stage="Waiting to Book"]{background:#e6f0ff;color:#245c9b;border-color:#a9c7ed}
+.consult-stage-select[data-stage="Converted"]{background:#e1f3e8;color:#236a44;border-color:#9fd4b3}
+.consult-stage-tab{border:1px solid #e8e3db;border-radius:8px;padding:9px 13px;font-weight:650;cursor:pointer;margin:0 7px 7px 0}
+.consult-stage-tab[data-stage="all"]{background:#f3f0ec;color:#504c47}
+.consult-stage-tab[data-stage="Follow Up"]{background:#fff0d9;color:#8b5700}
+.consult-stage-tab[data-stage="Waiting to Book"]{background:#e6f0ff;color:#245c9b}
+.consult-stage-tab[data-stage="Converted"]{background:#e1f3e8;color:#236a44}
+.consult-stage-tab[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:1px}
+
+
 </style>
 </head>
 <body>
@@ -373,18 +386,6 @@ function renderFollowups(){
  <p class="followup-filter-note">${desc}</p>${visible.length?table(visible):'<div class="empty">No matching follow-up leads.</div>'}</div>`;
 }
 function renderConsultations(){let list=leads.filter(x=>isBookedLead(x)||x.consultDate).sort((a,b)=>String(a.consultDate||a.trackerData?.['Booking Date']||'').localeCompare(String(b.consultDate||b.trackerData?.['Booking Date']||'')));app.innerHTML=pageHead('Consultations','Track consultation bookings and attendance.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`<div class="stats"><div class="stat"><label>Booked</label><strong>${leads.filter(isBookedLead).length}</strong></div><div class="stat"><label>Attended</label><strong>${leads.filter(x=>x.status==='Attended').length}</strong></div><div class="stat"><label>No-show / not attended</label><strong>${leads.filter(x=>x.status==='No-show').length}</strong></div><div class="stat"><label>Converted</label><strong>${stats().converted}</strong></div></div><div class="panel"><div class="panelhead"><h2>Booked clients and scheduled consultations</h2></div>${table(list)}</div>`}
-
-/* Attended consultation workflow status colors */
-.consult-stage-select{font-weight:700;border-radius:8px;padding:9px 12px;border:1px solid transparent;cursor:pointer}
-.consult-stage-select[data-stage="Follow Up"]{background:#fff0d9;color:#8b5700;border-color:#e9c58c}
-.consult-stage-select[data-stage="Waiting to Book"]{background:#e6f0ff;color:#245c9b;border-color:#a9c7ed}
-.consult-stage-select[data-stage="Converted"]{background:#e1f3e8;color:#236a44;border-color:#9fd4b3}
-.consult-stage-tab{border:1px solid #e8e3db;border-radius:8px;padding:9px 13px;font-weight:650;cursor:pointer;margin:0 7px 7px 0}
-.consult-stage-tab[data-stage="all"]{background:#f3f0ec;color:#504c47}
-.consult-stage-tab[data-stage="Follow Up"]{background:#fff0d9;color:#8b5700}
-.consult-stage-tab[data-stage="Waiting to Book"]{background:#e6f0ff;color:#245c9b}
-.consult-stage-tab[data-stage="Converted"]{background:#e1f3e8;color:#236a44}
-.consult-stage-tab[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:1px}
 
 /* Separate post-consultation workflow. Never changes lead status or CRM ID. */
 let attendedView='all';
