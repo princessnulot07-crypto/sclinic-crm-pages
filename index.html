@@ -84,7 +84,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
   <button data-page="followups"><span>◷</span><span class="navlabel">Follow-ups</span></button>
   <button data-page="consultations"><span>▣</span><span class="navlabel">Consultations</span></button>
   <button data-page="attended"><span>✓</span><span class="navlabel">Attended Consultations</span></button>
-  <button data-page="reports"><span>▤</span><span class="navlabel">Reports</span></button>
+  <button data-page="reports"><span>▤</span><span class="navlabel">Performance</span></button>
   <button data-page="settings"><span>⚙</span><span class="navlabel">Settings</span></button>
  </nav>
  <div class="sidefoot">Private shared CRM workspace<br>Secure cloud edition</div>
@@ -271,7 +271,7 @@ function setPage(p){page=p;document.querySelectorAll('.nav button').forEach(b=>b
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
 function pageHead(title,desc,action=''){return `<div class="pagehead"><div><h1>${title}</h1><p>${desc}</p></div>${action}</div>`}
 function render(){
- document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',followups:'Follow-ups',consultations:'Consultations',attended:'Attended Consultations',reports:'Reports',settings:'Settings'})[page];
+ document.getElementById('topTitle').textContent=({dashboard:'Dashboard',leads:'All Leads',followups:'Follow-ups',consultations:'Consultations',attended:'Attended Consultations',reports:'Performance',settings:'Settings'})[page];
  if(page==='dashboard')renderDashboard();if(page==='leads')renderLeads();if(page==='followups')renderFollowups();if(page==='consultations')renderConsultations();if(page==='attended')renderAttendedConsultations();if(page==='reports')renderReports();if(page==='settings')renderSettings();
 }
 // Dashboard date range uses the date each lead was received, inclusive of both endpoints.
@@ -513,19 +513,58 @@ function generateReport(){
  <label class="wl">What is the single priority for next week?</label><textarea class="wt">${esc(prio)}</textarea>
  ${all.length?'':'<div class="notice noprint">No leads have a Lead date inside this period.</div>'}</div>`;
 }
+
+function perfDate(x,key,fallback=''){return dateSortValue(TD(x,key)||fallback)}
+function perfInMonth(value,month){const d=dateSortValue(value);return d>=dateSortValue(month+'-01')&&d<dateSortValue(nextPerfMonth(month)+'-01')}
+function nextPerfMonth(month){const [y,m]=month.split('-').map(Number);return m===12?(y+1)+'-01':y+'-'+String(m+1).padStart(2,'0')}
+function perfOutcome(x){return TD(x,'Consultation Outcome').toLowerCase()}
+function perfBooked(x){return !!(TD(x,'Booking Date')||TD(x,'Consultation Date')||x.consultDate)||['Booked','Attended','No-show','Converted'].includes(x.status)}
+function perfAttended(x){return perfOutcome(x)==='attended'||['Attended','Converted'].includes(x.status)||x.consultationStage==='Converted'}
+function perfConverted(x){return TD(x,'Sale Converted').toLowerCase()==='yes'||x.status==='Converted'}
+function perfMoney(x){const v=String(TD(x,'Sale Value (AED)')||x.value||'').replace(/[^0-9.-]/g,'');return Number(v)||0}
+function perfSource(x){const raw=String(TD(x,'Lead Source')||x.source||'Other').trim();return raw||'Other'}
 function renderReports(){
- app.innerHTML=pageHead('Reports','Enter the dates yourself, then generate the weekly lead performance report.',`<button type="button" class="btn" onclick="exportCSV()">Export CSV</button>`)+`
- <div class="panel noprint"><div class="panelhead"><h2>Select report period</h2></div>
-  <div class="filters">
-   <label class="formitem">From date<input class="field" id="reportFrom" type="date"></label>
-   <label class="formitem">To date<input class="field" id="reportTo" type="date"></label>
-   <label class="formitem">Prepared by<input class="field" id="reportBy" placeholder="Name"></label>
-   <button type="button" class="btn primary" id="generateReportBtn">Generate report</button>
-   <button type="button" class="btn" id="printReportBtn">Print / Save PDF</button>
-  </div></div>
- <div class="panel" id="reportResults"><div class="notice">Choose the From and To dates, then click Generate report.</div></div>`;
- document.getElementById('generateReportBtn').addEventListener('click',generateReport);
- document.getElementById('printReportBtn').addEventListener('click',()=>window.print());
+ const defaultMonth=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
+ const current=document.getElementById('performanceMonth')?.value||defaultMonth;
+ app.innerHTML=pageHead('Performance','Lead Tracker-based performance overview. Figures reflect the latest records synchronized to the CRM.',`<button type="button" class="btn" onclick="exportCSV()">Export CSV</button>`)+
+ `<div class="panel"><div class="panelhead"><h2>Reporting month</h2><label>Month <input type="month" class="field" id="performanceMonth" value="${current}" onchange="updatePerformance()"></label></div><div id="performanceResults"></div></div>`;
+ updatePerformance();
+}
+function updatePerformance(){
+ const month=document.getElementById('performanceMonth')?.value;
+ if(!month)return;
+ const cohort=leads.filter(x=>perfInMonth(leadDate(x),month));
+ const scheduled=leads.filter(x=>perfInMonth(TD(x,'Consultation Date')||x.consultDate,month));
+ const closed=leads.filter(x=>perfInMonth(TD(x,'Sale Date'),month)&&perfConverted(x));
+ const booked=cohort.filter(perfBooked),attended=cohort.filter(perfAttended),converted=cohort.filter(perfConverted);
+ const actualAttended=scheduled.filter(perfAttended),noShows=scheduled.filter(x=>perfOutcome(x)==='no-show'||x.status==='No-show');
+ const percent=(n,d)=>d?(100*n/d).toFixed(1)+'%':'0.0%';
+ const tile=(name,value,detail)=>`<div class="stat"><label>${name}</label><strong>${value}</strong><small>${detail}</small></div>`;
+ const tiles=[
+ ['Leads received',cohort.length,'Lead received date'],
+ ['Consultations booked (cohort)',booked.length,'Leads received this month'],
+ ['Consultations attended (cohort)',attended.length,'Leads received this month'],
+ ['Sales converted (cohort)',converted.length,'Leads received this month'],
+ ['Cohort sales value',money(converted.reduce((s,x)=>s+perfMoney(x),0)),'AED · received this month'],
+ ['Booking rate',percent(booked.length,cohort.length),'Booked / leads received'],
+ ['Lead-to-sale rate',percent(converted.length,cohort.length),'Converted / leads received'],
+ ['Consultations scheduled',scheduled.length,'Consultation date in month'],
+ ['Consultations attended',actualAttended.length,'Consultation date in month'],
+ ['No-shows',noShows.length,'Consultation date in month'],
+ ['Attendance rate',percent(actualAttended.length,scheduled.length),'Attended / scheduled'],
+ ['Sales closed',closed.length,'Sale date in month'],
+ ['Sales value closed',money(closed.reduce((s,x)=>s+perfMoney(x),0)),'AED · sale date in month']
+ ];
+ const sources=[...new Set(cohort.map(perfSource))].sort((a,b)=>a.localeCompare(b));
+ const rows=sources.map(source=>{
+ const group=cohort.filter(x=>perfSource(x)===source);
+ const b=group.filter(perfBooked).length,a=group.filter(perfAttended).length,cv=group.filter(perfConverted);
+ return `<tr><td>${esc(source)}</td><td>${group.length}</td><td>${b}</td><td>${a}</td><td>${cv.length}</td><td>${money(cv.reduce((s,x)=>s+perfMoney(x),0))}</td></tr>`;
+ }).join('');
+ document.getElementById('performanceResults').innerHTML=`<div class="stats" style="padding:16px">${tiles.map(t=>tile(...t)).join('')}</div>
+ <div class="panelhead"><h2>Lead source performance — acquisition cohort</h2></div>
+ <div class="tablewrap"><table><thead><tr><th>Lead source</th><th>Leads</th><th>Booked</th><th>Attended</th><th>Converted</th><th>Sales value (AED)</th></tr></thead><tbody>${rows||'<tr><td colspan="6">No leads received in this month.</td></tr>'}</tbody></table></div>
+ <p class="followup-filter-note" style="padding:12px 18px">Based on the CRM copy of Lead Tracker fields. Cohort metrics follow the lead received date; appointment metrics follow consultation dates; closed sales follow sale dates. Advertising spend is not included because it is maintained separately in the Advertising Spend tab. Changes in Google Sheets appear after synchronization.</p>`;
 }
 function renderSettings(){app.innerHTML=pageHead('Settings','CRM details and local data management.')+`<div class="panel"><h2>Clinic details</h2><div class="quicklist" style="margin-top:14px"><div class="quickrow"><span>Clinic</span><strong>S’CLINIC</strong></div><div class="quickrow"><span>WhatsApp Business number</span><strong>+971 58 676 7298</strong></div><div class="quickrow"><span>Account setup</span><strong>Shared staff access</strong></div><div class="quickrow"><span>Lead sources</span><strong>Instagram · Facebook · NA · LinkedIn</strong></div><div class="quickrow"><span>Platform</span><strong>Supabase cloud / browser-based</strong></div></div><div class="notice"><strong>WhatsApp connection status: Not connected.</strong><br>This standalone HTML file can open a WhatsApp chat using the saved number, but it cannot automatically receive WhatsApp messages or sync chats. Automated lead capture requires a secure server and an approved Meta WhatsApp Business Platform integration.</div></div><div class="panel"><h2>Data backup</h2><p style="color:var(--muted)">Your leads are saved to your secure shared Supabase database when you edit them. Download a JSON backup periodically for disaster recovery.</p><button class="btn" onclick="exportCSV()">Download lead register (CSV)</button> <button class="btn" onclick="backupJSON()">Download backup (JSON)</button> <div class="notice">Important: HTML-only storage is not cloud storage. Records are stored in the shared cloud database. Refresh to see changes from another device. Export backups regularly. Do not store medical records, scalp photos or sensitive clinical information in this prototype.</div></div>`}
 function openModal(id=''){document.getElementById('leadForm').reset();document.getElementById('editId').value='';document.getElementById('modalTitle').textContent=id?'Edit lead':'Add new lead';document.getElementById('leadDateInput').value=today();if(id){let x=leads.find(l=>l.id===id);if(!x)return;document.getElementById('editId').value=x.id;['firstName','lastName','phone','source','status','followDate','consultDate','value','notes'].forEach(k=>document.getElementById(k).value=x[k]??'');document.getElementById('leadDateInput').value=leadDate(x)}document.getElementById('leadModal').classList.add('show')}
