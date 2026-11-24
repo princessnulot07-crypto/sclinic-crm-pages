@@ -392,7 +392,7 @@ function renderLeads(){
  const sources=[...new Set(leads.map(x=>String(x.source||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
  app.innerHTML=pageHead('All Leads','Client enquiries organized by the date each lead was received.',`<button class="btn primary" onclick="openModal()">+ Add lead</button>`)+`
  <div class="panel"><div class="panelhead"><h2>Lead register</h2><span class="register-count" id="leadCount"></span></div>
- <p class="register-help">Newest lead dates appear first. Filter by received date (From / To), status, source, or search.</p>
+ <p class="register-help">Newest lead dates appear first. Contact and no-show tabs also include matching tracker history; categories may overlap. Original lead statuses remain unchanged. Filter by date, status, source, or search.</p>
  <div class="filters" style="margin-bottom:15px">
  <input class="field search" id="search" placeholder="Search name, phone or notes..." oninput="filterLeads()" aria-label="Search leads">
  <label class="lead-date-filter">From <input class="field" type="date" id="leadFrom" onchange="filterLeads()" aria-label="Lead date from"></label>
@@ -411,6 +411,16 @@ function resetLeadFilters(){
  ['search','statusFilter','sourceFilter','leadFrom','leadTo'].forEach(id=>document.getElementById(id).value='');
  document.getElementById('leadOrder').value='newest';leadStageView='allLeads';filterLeads();
 }
+function matchesLeadRegisterStatus(x,status){
+ const norm=v=>String(v||'').trim().toLowerCase();
+ const current=norm(x.status),contact=norm(x.trackerData?.['Contact Status']),reason=norm(x.trackerData?.['Reason Not Proceeding']),outcome=norm(x.trackerData?.['Consultation Outcome']);
+ if(current===norm(status))return true;
+ if(status==='No-show')return current!=='converted'&&['no-show','no show'].includes(outcome);
+ if(status==='No response')return ['lost','contact attempted','contacted','new'].includes(current)&&reason==='unresponsive';
+ if(status==='Called No Answer')return ['contact attempted','contacted','new'].includes(current)&&contact==='no answer'&&reason!=='unresponsive';
+ if(status==='Called')return ['contacted','contact attempted'].includes(current)&&contact!=='no answer'&&reason!=='unresponsive';
+ return false;
+}
 function filterLeads(){
  const q=document.getElementById('search').value.toLowerCase().trim(),st=document.getElementById('statusFilter').value,so=document.getElementById('sourceFilter').value;
  const from=document.getElementById('leadFrom').value, to=document.getElementById('leadTo').value;
@@ -418,9 +428,9 @@ function filterLeads(){
  const fromMs=from?dateSortValue(from):0,toMs=to?dateSortValue(to):0;
  const list=leads.filter(x=>{const d=dateSortValue(leadDate(x));return (!bookedDashboardView||isBookedLead(x))&&(`${x.firstName||''} ${x.lastName||''} ${x.phone||''} ${x.notes||''} ${x.trackerData?.Campaign||''}`.toLowerCase().includes(q))&&(!so||x.source===so)&&(!fromMs||(d&&d>=fromMs))&&(!toMs||(d&&d<=toMs));});
  const leadStatuses=['New','Called','Called No Answer','Interested','Follow-up Required','No response','Booked','Attended','No-show','Converted','Lost'];
- const tabs=[['allLeads','All Leads',list.length],...leadStatuses.map(status=>[status,status,list.filter(x=>x.status===status).length])];
+ const tabs=[['allLeads','All Leads',list.length],...leadStatuses.map(status=>[status,status,list.filter(x=>matchesLeadRegisterStatus(x,status)).length])];
  document.getElementById('leadStageTabs').innerHTML=tabs.map(([key,label,count])=>`<button type="button" class="consult-stage-tab lead-status-tab" data-lead-status="${esc(key.replace(/\s+/g,'-'))}" aria-pressed="${leadStageView===key}" onclick="chooseLeadStage('${key}')">${esc(label)} (${count})</button>`).join('');
- const shown=st?list.filter(x=>x.status===st):list;
+ const shown=st?list.filter(x=>matchesLeadRegisterStatus(x,st)):list;
  document.getElementById('leadCount').textContent=`${bookedDashboardView?'Booked clients · ':''}Showing ${shown.length} of ${leads.length} leads`;
  document.getElementById('leadTable').innerHTML=table(orderedLeadRegister(shown),true);
 }
