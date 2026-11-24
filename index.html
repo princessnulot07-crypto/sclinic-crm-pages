@@ -414,6 +414,8 @@ function resetLeadFilters(){
 function matchesLeadRegisterStatus(x,status){
  const norm=v=>String(v||'').trim().toLowerCase();
  const current=norm(x.status),contact=norm(x.trackerData?.['Contact Status']),reason=norm(x.trackerData?.['Reason Not Proceeding']),outcome=norm(x.trackerData?.['Consultation Outcome']);
+ const sheetStatus=norm(x.trackerData?.['Lead Status']);
+ if(['called','called no answer','no response','no-show'].includes(sheetStatus)&&!['converted','booked','attended'].includes(current))return norm(status)===sheetStatus||current==='lost'&&status==='Lost';
  if(current===norm(status))return true;
  if(status==='No-show')return current!=='converted'&&['no-show','no show'].includes(outcome);
  if(status==='No response')return ['lost','contact attempted','contacted','new'].includes(current)&&reason==='unresponsive';
