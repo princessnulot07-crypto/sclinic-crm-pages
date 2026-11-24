@@ -294,7 +294,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 function displayLeadStatus(x){
  const sale=String(x.trackerData?.['Sale Converted']||'').trim().toLowerCase();
- return x.status==='Lost'?'Lost':(['yes','true','converted'].includes(sale)?'Converted':(x.status||'Unspecified'));
+ const sheetStatus=String(x.trackerData?.['Lead Status']||'').trim().toLowerCase();
+ return x.status==='Lost'?'Lost':(['yes','true','converted'].includes(sale)||x.status==='Converted'?'Converted':(sheetStatus==='not proceeding'?'Lost':(x.status||'Unspecified')));
 }
 function normalizeSource(x){const original=String(x.source||x.trackerData?.['Lead Source']||'').trim().toLowerCase();const campaign=String(x.trackerData?.Campaign||'').toLowerCase();if(original==='linkedin'||campaign==='linkedin')return 'LinkedIn';if(original==='instagram'||campaign.includes('instagram'))return 'Instagram';if(original==='facebook'||campaign.includes('facebook'))return 'Facebook';if(/walk[ -]?in/.test(original)||/walk[ -]?in/.test(campaign))return 'Walk-in';return 'NA';}
 leads=leads.map(x=>({...x,source:normalizeSource(x)}));
